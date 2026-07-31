@@ -1,0 +1,2433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cotizador PRO V9</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #F0EDE8;
+  --card:     #FAFAF8;
+  --text:     #1A1917;
+  --muted:    #6B6860;
+  --border:   #D6D2CB;
+  --soft:     #E8E4DE;
+  --accent:   #1D4ED8;
+  --accent2:  #0F2D7A;
+  --success:  #15803D;
+  --danger:   #B91C1C;
+  --warn:     #B45309;
+  --mono:     'DM Mono', monospace;
+  --sans:     'DM Sans', sans-serif;
+  --radius:   10px;
+  --shadow:   0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+}
+body.dark {
+  --bg:     #111210;
+  --card:   #1C1C1A;
+  --text:   #F0EDE8;
+  --muted:  #8A8780;
+  --border: #2E2E2A;
+  --soft:   #242420;
+  --accent: #3B82F6;
+  --accent2:#6BA3FF;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background .25s, color .25s;
+  padding: 0;
+}
+
+/* ── HEADER ── */
+.header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+.header-title {
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -.3px;
+  margin-right: auto;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.header-title span { color: var(--accent); }
+.header-subtitle {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
+  letter-spacing: .4px;
+}
+
+/* ── TOOLBAR ── */
+.toolbar {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+input, select {
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  min-width: 100px;
+}
+input:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(29,78,216,.12);
+}
+input.error {
+  border-color: var(--danger);
+  background: #FEF2F2;
+}
+body.dark input.error { background: #2D1515; }
+
+.btn {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--soft); }
+.btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+.btn.danger { color: var(--danger); }
+.btn.danger:hover { background: #FEF2F2; border-color: var(--danger); }
+
+/* ── MAIN LAYOUT ── */
+.main { padding: 20px 24px; max-width: 1700px; margin: 0 auto; }
+
+/* ── DASHBOARD ── */
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.kpi {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+.kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 6px;
+}
+.kpi-value {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -.5px;
+}
+.kpi.highlight { border-color: var(--accent); }
+.kpi.highlight .kpi-value { color: var(--accent); }
+.kpi.good .kpi-value { color: var(--success); }
+.kpi.bad .kpi-value  { color: var(--danger); }
+
+/* ── ALERTA PRESUPUESTO ── */
+.alerta {
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  display: none;
+}
+.alerta.visible { display: block; }
+.alerta.ok     { background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC; }
+.alerta.bad    { background: #FEE2E2; color: #B91C1C; border: 1px solid #FCA5A5; }
+body.dark .alerta.ok  { background: #052E16; border-color: #166534; }
+body.dark .alerta.bad { background: #2D0A0A; border-color: #7F1D1D; }
+
+/* ── TABLA ── */
+.table-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: auto;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1100px;
+  font-size: 13px;
+}
+thead th {
+  background: var(--soft);
+  padding: 10px 10px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background .1s;
+}
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--soft); }
+tbody td { padding: 6px 8px; vertical-align: middle; }
+
+/* inputs dentro de la tabla */
+tbody input {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 13px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  min-width: 0;
+}
+tbody input:focus {
+  border-color: var(--accent);
+  background: var(--card);
+  box-shadow: 0 0 0 2px rgba(29,78,216,.1);
+}
+tbody input[readonly] {
+  background: var(--soft);
+  color: var(--muted);
+  cursor: default;
+  font-family: var(--mono);
+}
+tbody input[readonly]:focus { border-color: transparent; box-shadow: none; }
+tbody input.pfull-input { font-family: var(--mono); }
+tbody input.pfull-input.error {
+  border-color: var(--danger) !important;
+  background: #FEF2F2;
+}
+
+.col-item  { width: 48px; text-align: center; }
+.col-qty   { width: 80px; }
+.col-desc  { min-width: 180px; }
+.col-pfull { width: 120px; }
+.col-neto  { width: 110px; }
+.col-pct   { width: 75px; }
+.col-vunit { width: 110px; }
+.col-util  { width: 110px; }
+.col-total { width: 120px; }
+.col-sku   { width: 90px; }
+.col-link  { width: 180px; }
+.col-del   { width: 40px; text-align: center; }
+
+/* número de ítem */
+.item-num {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: center;
+  display: block;
+}
+/* link hipervínculo dentro de la tabla */
+.link-anchor {
+  display: none;
+  font-size: 11px;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.link-anchor:hover { text-decoration: underline; background: var(--soft); }
+.link-anchor.visible { display: inline-block; }
+
+.util-cell  { font-family: var(--mono); font-weight: 500; color: var(--success); }
+.total-cell { font-family: var(--mono); font-weight: 600; }
+
+/* V. Unitario en azul igual que highlight KPI */
+tbody input.vunit[readonly] {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--soft);
+}
+
+.btn-del {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition: all .15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-del:hover { background: #FEE2E2; color: var(--danger); border-color: var(--danger); }
+
+/* ── FOOTER ── */
+.footer-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.autosave {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.autosave-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: .4; }
+}
+
+/* ── TOOLTIP para margen ponderado ── */
+.kpi-hint {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .header, .toolbar, .main { padding-left: 14px; padding-right: 14px; }
+  .dashboard { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── AI PANEL ── */
+.ai-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.ai-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #1D4ED8 0%, #0F2D7A 100%);
+  color: #fff;
+  cursor: pointer;
+  user-select: none;
+}
+.ai-panel-header .ai-badge {
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.ai-panel-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  flex: 1;
+}
+.ai-panel-header .chevron {
+  font-size: 12px;
+  transition: transform .2s;
+}
+.ai-panel-header.open .chevron { transform: rotate(180deg); }
+.ai-panel-body {
+  padding: 16px;
+  display: none;
+}
+.ai-panel-body.open { display: block; }
+
+/* IA tabs */
+.ai-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.ai-tab {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.ai-tab:hover { background: var(--soft); color: var(--text); }
+.ai-tab.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* AI Section contents */
+.ai-section { display: none; }
+.ai-section.active { display: block; }
+
+/* Semáforo result card */
+.semaforo-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-top: 12px;
+}
+.semaforo-header {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.semaforo-icon { font-size: 32px; line-height: 1; }
+.semaforo-info h4 { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+.semaforo-info p  { font-size: 12px; color: var(--muted); }
+.semaforo-header.verde { background: #DCFCE7; border-bottom: 1px solid #86EFAC; }
+.semaforo-header.amarillo { background: #FEF9C3; border-bottom: 1px solid #FDE047; }
+.semaforo-header.rojo { background: #FEE2E2; border-bottom: 1px solid #FCA5A5; }
+body.dark .semaforo-header.verde { background: #052E16; border-bottom-color: #166534; }
+body.dark .semaforo-header.amarillo { background: #2A1F00; border-bottom-color: #854D0E; }
+body.dark .semaforo-header.rojo { background: #2D0A0A; border-bottom-color: #7F1D1D; }
+
+.semaforo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.semaforo-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: .4px;
+  border-bottom: 1px solid var(--border);
+  background: var(--soft);
+}
+.semaforo-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.semaforo-table tr:last-child td { border-bottom: none; }
+.semaforo-table .label-col { font-family: var(--sans); font-weight: 500; color: var(--text); }
+.semaforo-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+.semaforo-summary-item {
+  padding: 10px 14px;
+  border-right: 1px solid var(--border);
+  text-align: center;
+}
+.semaforo-summary-item:last-child { border-right: none; }
+.semaforo-summary-item .s-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px; }
+.semaforo-summary-item .s-value { font-family: var(--mono); font-size: 14px; font-weight: 600; }
+
+/* Providers table */
+.prov-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 12px;
+}
+.prov-table th {
+  padding: 8px 10px;
+  background: var(--soft);
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  border-bottom: 1px solid var(--border);
+}
+.prov-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.prov-table tr:last-child td { border-bottom: none; }
+.prov-table tr:hover td { background: var(--soft); }
+.prov-best { background: #F0FDF4 !important; }
+body.dark .prov-best { background: #052E16 !important; }
+.prov-badge {
+  font-size: 10px;
+  background: var(--success);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.btn-use-price {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font-family: var(--sans);
+  font-weight: 600;
+  transition: all .12s;
+  white-space: nowrap;
+}
+.btn-use-price:hover { background: var(--accent); color: #fff; }
+
+/* IA Chat */
+.ia-chat-input-wrap {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.ia-chat-input-wrap textarea {
+  flex: 1;
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  resize: vertical;
+  min-height: 72px;
+  outline: none;
+}
+.ia-chat-input-wrap textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(29,78,216,.12); }
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.ai-loading {
+  text-align: center;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.ai-loading .spin-big {
+  display: block;
+  width: 28px; height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  margin: 0 auto 10px;
+}
+.link-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--soft);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+.link-chip:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── FILTRO CATEGORÍAS ── */
+.filtro-bar { display:none;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 16px;background:var(--soft);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px; }
+.filtro-bar.visible { display:flex; }
+.filtro-label { font-size:12px;color:var(--muted);font-weight:600;margin-right:4px;white-space:nowrap; }
+.filtro-btn { font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;font-family:var(--sans);font-weight:500;transition:all .15s;white-space:nowrap; }
+.filtro-btn:hover { background:var(--soft);color:var(--text); }
+.filtro-btn.active { border-color:var(--accent);background:var(--accent);color:#fff; }
+.cat-badge { display:inline-block;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;white-space:nowrap; }
+.cat-ferreteria  { background:#FEE2E2;color:#991B1B; }
+.cat-iluminacion { background:#FEF3C7;color:#92400E; }
+.cat-redes       { background:#D1FAE5;color:#065F46; }
+.cat-electrico   { background:#DBEAFE;color:#1E40AF; }
+.cat-seguridad   { background:#EDE9FE;color:#5B21B6; }
+.cat-tecnologia  { background:#CFFAFE;color:#155E75; }
+.cat-general     { background:#F3F4F6;color:#374151; }
+body.dark .cat-ferreteria  { background:#7F1D1D;color:#FCA5A5; }
+body.dark .cat-iluminacion { background:#78350F;color:#FDE68A; }
+body.dark .cat-redes       { background:#064E3B;color:#6EE7B7; }
+body.dark .cat-electrico   { background:#1E3A5F;color:#93C5FD; }
+body.dark .cat-seguridad   { background:#3B0764;color:#C4B5FD; }
+body.dark .cat-tecnologia  { background:#164E63;color:#67E8F9; }
+body.dark .cat-general     { background:#1F2937;color:#D1D5DB; }
+tr.cat-row-ferreteria  td:first-child { border-left:3px solid #E24B4A; }
+tr.cat-row-iluminacion td:first-child { border-left:3px solid #EF9F27; }
+tr.cat-row-redes       td:first-child { border-left:3px solid #1D9E75; }
+tr.cat-row-electrico   td:first-child { border-left:3px solid #378ADD; }
+tr.cat-row-seguridad   td:first-child { border-left:3px solid #7C3AED; }
+tr.cat-row-tecnologia  td:first-child { border-left:3px solid #0891B2; }
+
+/* ── ÍNDICE DE SELECCIÓN (IS) ── */
+.is-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 700; padding: 3px 8px;
+  border-radius: 6px; white-space: nowrap;
+}
+.is-A  { background:#D1FAE5; color:#065F46; }
+.is-B  { background:#FEF3C7; color:#92400E; }
+.is-C  { background:#FEE2E2; color:#991B1B; }
+.is-X  { background:#F3F4F6; color:#6B7280; }
+body.dark .is-A { background:#064E3B; color:#6EE7B7; }
+body.dark .is-B { background:#78350F; color:#FDE68A; }
+body.dark .is-C { background:#7F1D1D; color:#FCA5A5; }
+body.dark .is-X { background:#1F2937; color:#9CA3AF; }
+
+.rot-badge {
+  font-size:10px; padding:2px 6px; border-radius:4px;
+  font-weight:600; white-space:nowrap;
+}
+.rot-low  { background:#D1FAE5; color:#065F46; }
+.rot-mid  { background:#FEF3C7; color:#92400E; }
+.rot-high { background:#FEE2E2; color:#991B1B; }
+body.dark .rot-low  { background:#064E3B; color:#6EE7B7; }
+body.dark .rot-mid  { background:#78350F; color:#FDE68A; }
+body.dark .rot-high { background:#7F1D1D; color:#FCA5A5; }
+
+.req-wrap { margin-top:3px; }
+.req-input {
+  width:100%; font-size:11px; padding:4px 6px;
+  border:1px solid var(--border); border-radius:4px;
+  background:var(--bg); color:var(--muted);
+  font-family:var(--sans); outline:none; box-sizing:border-box;
+}
+.req-input:focus { border-color:var(--accent); color:var(--text); }
+.desc:focus ~ .req-wrap, .req-wrap:focus-within { display:block !important; }
+
+.is-panel {
+  background:var(--soft); border:1px solid var(--border);
+  border-radius:8px; padding:12px 14px; margin-top:8px;
+}
+.is-panel h4 { font-size:12px; font-weight:700; margin-bottom:10px; color:var(--text); }
+.is-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+.is-factor { background:var(--card); border:1px solid var(--border); border-radius:6px; padding:8px 10px; }
+.is-factor .f-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:3px; }
+.is-factor .f-val { font-size:18px; font-weight:700; font-family:var(--mono); }
+.is-factor .f-bar { height:4px; border-radius:2px; background:var(--border); margin-top:4px; }
+.is-factor .f-fill { height:4px; border-radius:2px; background:var(--accent); }
+.is-total { text-align:center; padding:12px; background:var(--card); border:1px solid var(--border); border-radius:8px; margin-bottom:10px; }
+.is-total .is-score { font-size:36px; font-weight:800; font-family:var(--mono); }
+.is-ranking-table { width:100%; border-collapse:collapse; font-size:12px; }
+.is-ranking-table th { padding:5px 8px; background:var(--soft); font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; border-bottom:1px solid var(--border); }
+.is-ranking-table td { padding:6px 8px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.is-ranking-table tr:last-child td { border-bottom:none; }
+.is-winner { background:var(--card) !important; }
+
+
+/* ── BARRA DE PRESUPUESTO ── */
+.budget-bar-wrap {
+  margin-bottom: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  display: none;
+}
+.budget-bar-wrap.visible { display: block; }
+.budget-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.budget-bar-label { font-weight: 600; color: var(--text); }
+.budget-bar-pct   { font-family: var(--mono); font-weight: 700; font-size: 13px; }
+.budget-bar-track {
+  height: 10px;
+  background: var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.budget-bar-fill {
+  height: 10px;
+  border-radius: 5px;
+  transition: width .4s ease, background .4s;
+  background: var(--success);
+}
+.budget-bar-fill.warn   { background: #F59E0B; }
+.budget-bar-fill.danger { background: var(--danger); }
+.budget-bar-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 5px;
+}
+
+/* ── HISTORIAL ── */
+.hist-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.hist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+}
+.hist-header h3 { font-size: 13px; font-weight: 600; }
+.hist-body { display: none; padding: 12px 14px; }
+.hist-body.open { display: block; }
+.hist-list { display: grid; gap: 6px; }
+.hist-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.hist-item:hover { background: var(--soft); }
+.hist-item .hi-name  { flex:1; font-weight:500; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hist-item .hi-date  { color:var(--muted); font-size:11px; white-space:nowrap; }
+.hist-item .hi-total { font-family:var(--mono); font-size:11px; color:var(--accent); white-space:nowrap; }
+.hist-item .hi-btn   { font-size:11px; padding:3px 8px; border-radius:4px; border:1px solid var(--border); background:var(--card); cursor:pointer; white-space:nowrap; }
+.hist-item .hi-btn:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
+.hist-save-bar { display:flex; gap:8px; margin-bottom:10px; }
+.hist-save-bar input { flex:1; font-size:12px; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); outline:none; }
+.hist-save-bar input:focus { border-color:var(--accent); }
+
+</style>
+</head>
+<body class="dark">
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-title">
+    <div>Cotizador <span>PRO</span> V9</div>
+    <div class="header-subtitle">by gmporras</div>
+  </div>
+  <input type="file" id="excelFile" accept=".xlsx,.xls" title="Importar Excel" style="font-size:12px;max-width:200px">
+  <input type="file" id="pdfFile" accept=".pdf" title="Importar PDF" style="display:none">
+  <button class="btn" onclick="document.getElementById('pdfFile').click()" title="Importar PDF de licitación" style="font-size:13px;padding:6px 10px;">📄 PDF</button>
+  <button class="btn" onclick="toggleDarkMode()">🌙</button>
+  <button class="btn" onclick="openApiConfig()" title="Configurar API Key OpenRouter" style="font-size:15px;padding:7px 10px;">⚙️</button>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="field">
+    <label>Presupuesto cliente</label>
+    <input id="presupuesto" type="text" value="$0" style="width:130px">
+  </div>
+  <div class="field">
+    <label>Flete (neto s/IVA)</label>
+    <input id="flete" type="text" value="$0" style="width:120px">
+  </div>
+  <div class="field">
+    <label>Utilidad global %</label>
+    <input id="globalUtil" type="number" value="30" min="0" max="99" style="width:90px">
+  </div>
+  <!-- Selects ocultos con valores fijos -->
+  <select id="tipoMargen" style="display:none"><option value="margen" selected>Margen real</option></select>
+  <select id="modoRedondeo" style="display:none"><option value="ceil" selected>Hacia arriba</option></select>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-self:flex-end">
+    <button class="btn" onclick="aplicarUtilidadGlobal()">Aplicar % global</button>
+    <button class="btn" onclick="guardarExcel()">⬇ Excel</button>
+    <button class="btn" id="btnBuscarTodos" onclick="buscarTodosLosItems()" title="Buscar precio en todos los ítems sin link">🔍 Buscar todos</button>
+    <button class="btn danger" onclick="clearAll()">Limpiar</button>
+    <button class="btn primary" onclick="addRow()">+ Fila</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- KPIs -->
+  <div class="dashboard">
+    <div class="kpi">
+      <div class="kpi-label">Subtotal artículos</div>
+      <div class="kpi-value" id="kpi-sub">$0</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Neto (+ flete)</div>
+      <div class="kpi-value" id="kpi-neto">$0</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">IVA 19%</div>
+      <div class="kpi-value" id="kpi-iva">$0</div>
+    </div>
+    <div class="kpi highlight">
+      <div class="kpi-label">Total con IVA</div>
+      <div class="kpi-value" id="kpi-total">$0</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Costo real artículos</div>
+      <div class="kpi-value" id="kpi-costo">$0</div>
+    </div>
+    <div class="kpi good">
+      <div class="kpi-label">Utilidad total</div>
+      <div class="kpi-value" id="kpi-utilidad">$0</div>
+    </div>
+    <div class="kpi good">
+      <div class="kpi-label">Margen ponderado</div>
+      <div class="kpi-value" id="kpi-margen">0%</div>
+      <div class="kpi-hint" id="kpi-margen-hint">Ponderado por monto</div>
+    </div>
+  </div>
+
+  <!-- BARRA DE PRESUPUESTO EN TIEMPO REAL -->
+  <div class="budget-bar-wrap" id="budgetBarWrap">
+    <div class="budget-bar-header">
+      <span class="budget-bar-label">💰 Presupuesto del cliente</span>
+      <span class="budget-bar-pct" id="budgetPct">0%</span>
+    </div>
+    <div class="budget-bar-track">
+      <div class="budget-bar-fill" id="budgetFill" style="width:0%"></div>
+    </div>
+    <div class="budget-bar-detail">
+      <span id="budgetUsed">Utilizado: $0</span>
+      <span id="budgetLeft">Disponible: $0</span>
+    </div>
+  </div>
+
+  <!-- ALERTA PRESUPUESTO -->
+  <div class="alerta" id="alerta"></div>
+
+  <!-- HISTORIAL DE COTIZACIONES -->
+  <div class="hist-panel" id="histPanel">
+    <div class="hist-header" onclick="toggleHist()">
+      <h3>📋 Historial de cotizaciones</h3>
+      <span id="histChevron" style="font-size:12px">▼</span>
+    </div>
+    <div class="hist-body" id="histBody">
+      <div class="hist-save-bar">
+        <input id="histNombre" type="text" placeholder="Nombre de esta cotización (ej: Licitación Carabineros Coquimbo)">
+        <button class="btn primary" onclick="guardarEnHistorial()">💾 Guardar cotización</button>
+      </div>
+      <div class="hist-list" id="histList"></div>
+    </div>
+  </div>
+
+  <!-- FILTRO CATEGORÍAS -->
+  <div class="filtro-bar" id="filtroBar">
+    <span class="filtro-label">Categoría:</span>
+    <button class="filtro-btn active" onclick="filtrarCategoria('todos',this)">Todos</button>
+  </div>
+
+  <!-- TABLA -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="col-item">#</th>
+          <th class="col-qty">Cant.</th>
+          <th class="col-desc">Descripción</th>
+          <th class="col-pfull">P. Full (c/IVA)</th>
+          <th class="col-neto">Costo neto</th>
+          <th class="col-pct">Util %</th>
+          <th class="col-vunit">V. Unitario</th>
+          <th class="col-util">Utilidad fila</th>
+          <th class="col-total">Total fila</th>
+          <th class="col-sku">SKU</th>
+          <th class="col-link">Link proveedor</th>
+          <th class="col-del"></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+
+
+  <!-- FOOTER -->
+  <div class="footer-bar">
+    <div class="autosave">
+      <div class="autosave-dot"></div>
+      Autoguardado activo
+    </div>
+    <span style="font-size:12px;color:var(--muted)" id="lastSave"></span>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────
+function clp(v) {
+  return '$' + Math.round(v).toLocaleString('es-CL');
+}
+
+function limpiarNumero(v) {
+  if (typeof v === 'number') return isNaN(v) ? 0 : v;
+  v = (v || '').toString()
+    .replace(/\$/g, '')
+    .replace(/\./g, '')   // miles CLP usan punto
+    .replace(',', '.');   // por si acaso
+  const n = parseFloat(v.replace(/[^\d.-]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+function formatoInputCLP(input) {
+  const val = limpiarNumero(input.value);
+  input.value = clp(val);
+}
+
+function redondear(v) {
+  const m = document.getElementById('modoRedondeo').value;
+  if (m === 'ceil')  return Math.ceil(v);
+  if (m === '10')    return Math.ceil(v / 10) * 10;
+  if (m === '100')   return Math.ceil(v / 100) * 100;
+  return v;
+}
+
+function calcularVenta(costo, pct) {
+  const tipo = document.getElementById('tipoMargen').value;
+  const m = Math.min(pct / 100, 0.9999);
+  if (tipo === 'markup') return costo * (1 + m);
+  return costo / (1 - m);         // margen real
+}
+
+// ─────────────────────────────────────────────
+// NUMERACIÓN CORRELATIVA DE ÍTEMS
+// ─────────────────────────────────────────────
+function renumerarItems() {
+  document.querySelectorAll('#tbody tr').forEach((tr, i) => {
+    const span = tr.querySelector('.item-num');
+    if (span) span.textContent = String(i + 1).padStart(2, '0');
+  });
+}
+
+// ─────────────────────────────────────────────
+// FILA
+// ─────────────────────────────────────────────
+function addRow(data = {}) {
+  const tbody = document.getElementById('tbody');
+  const tr = document.createElement('tr');
+
+  tr.innerHTML = `
+    <td class="col-item"><span class="item-num">—</span></td>
+    <td class="col-qty">
+      <input type="number" class="qty" min="1" value="${data.qty || 1}" style="min-width:60px">
+    </td>
+    <td class="col-desc">
+      <input class="desc" type="text" value="${esc(data.desc || '')}" placeholder="Descripción del producto">
+      <div class="req-wrap" style="display:none;">
+        <input class="req-input" type="text" value="${esc(data.requisitos || '')}" placeholder="Requisitos técnicos: ej: 2TB, USB-C, 1000MB/s...">
+      </div>
+    </td>
+    <td class="col-pfull">
+      <input class="pfull pfull-input" type="text" value="${data.pfull || 0}"
+             placeholder="$ c/IVA">
+    </td>
+    <td class="col-neto">
+      <input class="costoneto" readonly tabindex="-1">
+    </td>
+    <td class="col-pct">
+      <input class="util" type="number" min="0" max="99" value="${data.util !== undefined ? data.util : 30}">
+    </td>
+    <td class="col-vunit" title="Clic para copiar al portapapeles" onclick="copiarAlPortapapeles(this.querySelector('.vunit').value)" style="cursor:pointer">
+      <input class="vunit" readonly tabindex="-1" style="cursor:pointer">
+    </td>
+    <td class="col-util util-cell"><span class="util-display">$0</span></td>
+    <td class="col-total total-cell"><span class="total-display" data-raw="0">$0</span></td>
+    <td class="col-sku">
+      <input class="sku" type="text" value="${esc(data.sku || '')}">
+    </td>
+    <td class="col-link">
+      <input class="link" type="text" value="${esc(data.link || '')}" placeholder="https://...">
+      <a class="link-anchor" href="#" target="_blank" rel="noopener noreferrer">🔗 Abrir</a>
+    </td>
+    <td class="col-del">
+      <button class="btn-buscar-fila" title="Buscar precio real en Google" onclick="buscarYCargar(this.closest('tr'))" style="font-size:13px;padding:4px 7px;border-radius:5px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;margin-bottom:4px;display:block;width:100%">🔍</button>
+      <button class="btn-save-cache" title="Guardar precio actual en caché" onclick="guardarFilaEnCache(this.closest('tr'))" style="font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;margin-bottom:4px;display:block;width:100%">💾</button>
+      <button class="btn-del" title="Eliminar fila">×</button>
+    </td>
+  `;
+
+  // Actualizar hipervínculo al escribir el link
+  const linkInput = tr.querySelector('.link');
+  const linkAnchor = tr.querySelector('.link-anchor');
+  function updateLinkAnchor() {
+    const url = linkInput.value.trim();
+    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+      linkAnchor.href = url;
+      linkAnchor.classList.add('visible');
+    } else if (url && !url.startsWith('http')) {
+      linkAnchor.href = 'https://' + url;
+      linkAnchor.classList.add('visible');
+    } else {
+      linkAnchor.classList.remove('visible');
+    }
+  }
+  linkInput.addEventListener('input', updateLinkAnchor);
+  linkInput.addEventListener('blur', updateLinkAnchor);
+  updateLinkAnchor();
+
+  // Mostrar/ocultar campo de requisitos técnicos al hacer foco en descripción
+  const descInput = tr.querySelector('.desc');
+  const reqWrap   = tr.querySelector('.req-wrap');
+  if (descInput && reqWrap) {
+    descInput.addEventListener('focus', () => reqWrap.style.display = 'block');
+    descInput.addEventListener('blur',  () => {
+      // Mantener visible si el req-input tiene contenido o está enfocado
+      const reqIn = reqWrap.querySelector('.req-input');
+      if (!reqIn || (!reqIn.value && document.activeElement !== reqIn)) {
+        reqWrap.style.display = 'none';
+      }
+    });
+  }
+
+  tbody.appendChild(tr);
+  renumerarItems();
+
+  // Eventos
+  tr.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', () => { validarPfull(tr); calcRow(tr); saveLocal(); });
+  });
+
+  tr.querySelector('.btn-del').addEventListener('click', () => {
+    tr.remove(); renumerarItems(); calcAll(); saveLocal();
+  });
+
+  // Formato CLP en pfull al salir
+  tr.querySelector('.pfull').addEventListener('blur', () => {
+    const inp = tr.querySelector('.pfull');
+    const val = limpiarNumero(inp.value);
+    if (val > 0) inp.value = clp(val);
+    validarPfull(tr);
+    calcRow(tr);
+    saveLocal();
+  });
+  tr.querySelector('.pfull').addEventListener('focus', () => {
+    const inp = tr.querySelector('.pfull');
+    inp.value = limpiarNumero(inp.value) || '';
+  });
+
+  calcRow(tr);
+}
+
+function esc(str) {
+  return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function validarPfull(tr) {
+  const inp = tr.querySelector('.pfull');
+  const val = limpiarNumero(inp.value);
+  // Mostrar error si hay texto no numérico pero no está vacío
+  const raw = inp.value.replace(/\$/g,'').replace(/\./g,'').trim();
+  const invalido = raw !== '' && isNaN(Number(raw.replace(',','.')));
+  inp.classList.toggle('error', invalido);
+  return !invalido;
+}
+
+function calcRow(tr) {
+  const qty    = Math.max(1, limpiarNumero(tr.querySelector('.qty').value));
+  const pfull  = Math.max(0, limpiarNumero(tr.querySelector('.pfull').value));
+  const pct    = Math.min(99, Math.max(0, limpiarNumero(tr.querySelector('.util').value)));
+
+  // COSTO NETO: precio full ya incluye IVA, lo sacamos
+  const costo  = pfull / 1.19;
+
+  // VENTA UNITARIA con margen o markup
+  const venta  = calcularVenta(costo, pct);
+  const vunit  = redondear(venta);
+
+  // UTILIDAD por fila (venta - costo) × cantidad
+  // CORRECTO: se usa vunit (redondeado) que es lo que realmente se cobra
+  const utilidad = (vunit - costo) * qty;
+  const total    = vunit * qty;
+
+  // Mostrar
+  tr.querySelector('.costoneto').value = clp(costo);
+  tr.querySelector('.vunit').value     = clp(vunit);
+
+  const utilDisplay  = tr.querySelector('.util-display');
+  const totalDisplay = tr.querySelector('.total-display');
+
+  utilDisplay.textContent       = clp(utilidad);
+  utilDisplay.style.color       = utilidad >= 0 ? 'var(--success)' : 'var(--danger)';
+  totalDisplay.textContent      = clp(total);
+  totalDisplay.dataset.raw      = total;
+  totalDisplay.dataset.costo    = costo * qty;   // guardamos costo real para margen ponderado
+  totalDisplay.dataset.utilidad = utilidad;
+
+  calcAll();
+}
+
+// ─────────────────────────────────────────────
+// TOTALES (CORREGIDO)
+// ─────────────────────────────────────────────
+function calcAll() {
+  let subtotal      = 0;
+  let costoRealTotal = 0;
+  let utilidadTotal = 0;
+
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    const td = tr.querySelector('.total-display');
+    if (!td) return;
+    const total    = parseFloat(td.dataset.raw)      || 0;
+    const costo    = parseFloat(td.dataset.costo)    || 0;
+    const utilidad = parseFloat(td.dataset.utilidad) || 0;
+    subtotal       += total;
+    costoRealTotal += costo;
+    utilidadTotal  += utilidad;
+  });
+
+  const fleteVal = limpiarNumero(document.getElementById('flete').value);
+  const netoVal  = subtotal + fleteVal;
+  const ivaVal   = netoVal * 0.19;
+  const totalVal = netoVal + ivaVal;
+
+  // ── MARGEN PONDERADO CORRECTO ──
+  // (utilidad total) / (subtotal de venta) × 100
+  // Esto sí refleja el margen real del negocio
+  const margenPonderado = subtotal > 0 ? (utilidadTotal / subtotal) * 100 : 0;
+
+  document.getElementById('kpi-sub').textContent      = clp(subtotal);
+  document.getElementById('kpi-neto').textContent     = clp(netoVal);
+  document.getElementById('kpi-iva').textContent      = clp(ivaVal);
+  document.getElementById('kpi-total').textContent    = clp(totalVal);
+  document.getElementById('kpi-costo').textContent    = clp(costoRealTotal);
+  document.getElementById('kpi-utilidad').textContent = clp(utilidadTotal);
+  document.getElementById('kpi-margen').textContent   = margenPonderado.toFixed(1) + '%';
+
+  // Color margen
+  const margenEl = document.getElementById('kpi-margen').parentElement;
+  margenEl.classList.remove('good', 'bad');
+  margenEl.classList.add(margenPonderado >= 15 ? 'good' : 'bad');
+
+  // Alerta y barra de presupuesto
+  const pres   = limpiarNumero(document.getElementById('presupuesto').value);
+  const alerta = document.getElementById('alerta');
+  actualizarBarraPresupuesto(totalVal, pres);
+  if (pres > 0) {
+    alerta.classList.add('visible');
+    if (totalVal > pres) {
+      const dif  = totalVal - pres;
+      const porc = (dif / pres * 100).toFixed(1);
+      alerta.textContent = `⚠ Presupuesto excedido por ${clp(dif)} (${porc}% sobre el límite)`;
+      alerta.className = 'alerta visible bad';
+    } else {
+      const margen = pres - totalVal;
+      alerta.textContent = `✔ Dentro del presupuesto — margen disponible: ${clp(margen)}`;
+      alerta.className = 'alerta visible ok';
+    }
+  } else {
+    alerta.classList.remove('visible');
+  }
+}
+
+// ─────────────────────────────────────────────
+// ACCIONES
+// ─────────────────────────────────────────────
+function aplicarUtilidadGlobal() {
+  const val = limpiarNumero(document.getElementById('globalUtil').value);
+  document.querySelectorAll('#tbody .util').forEach(i => { i.value = val; });
+  document.querySelectorAll('#tbody tr').forEach(calcRow);
+  saveLocal();
+}
+
+function clearAll() {
+  if (!confirm('¿Limpiar toda la cotización? Se perderán los datos actuales.')) return;
+  localStorage.removeItem('cotizadorProV9');
+  document.getElementById('tbody').innerHTML = '';
+  addRow();
+  calcAll();
+
+}
+
+function toggleDarkMode() {
+  document.body.classList.toggle('dark');
+  saveLocal();
+}
+
+// ─────────────────────────────────────────────
+// AUTOGUARDADO
+// ─────────────────────────────────────────────
+function saveLocal() {
+  const rows = [];
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    // Saltar filas de paneles de resultados (no tienen inputs de datos)
+    if (tr.id && tr.id.startsWith('opciones-fila-')) return;
+    if (!tr.querySelector('.desc')) return;
+    rows.push({
+      qty       : tr.querySelector('.qty').value,
+      desc      : tr.querySelector('.desc').value,
+      requisitos: tr.querySelector('.req-input') ? tr.querySelector('.req-input').value.trim() : '',
+      pfull     : limpiarNumero(tr.querySelector('.pfull').value),
+      util      : tr.querySelector('.util').value,
+      sku       : tr.querySelector('.sku').value,
+      link      : tr.querySelector('.link').value,
+      categoria : tr.dataset.categoria || '',
+    });
+  });
+  const data = {
+    rows,
+    flete:       document.getElementById('flete').value,
+    presupuesto: clp(limpiarNumero(document.getElementById('presupuesto').value)),
+    modoRedondeo:document.getElementById('modoRedondeo').value,
+    tipoMargen:  document.getElementById('tipoMargen').value,
+    globalUtil:  document.getElementById('globalUtil').value,
+    dark:        document.body.classList.contains('dark'),
+  };
+  localStorage.setItem('cotizadorProV9', JSON.stringify(data));
+  const ts = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
+  const el = document.getElementById('lastSave');
+  if (el) el.textContent = `Guardado ${ts}`;
+}
+
+function loadLocal() {
+  const raw = localStorage.getItem('cotizadorProV9');
+  if (!raw) {
+    // Sin datos guardados: modo oscuro por defecto
+    document.body.classList.add('dark');
+    addRow();
+    return;
+  }
+  const d = JSON.parse(raw);
+  document.getElementById('flete').value        = d.flete        || '$0';
+  // Restaurar presupuesto: si tiene valor guardado distinto de $0, mostrarlo formateado
+  const presVal = limpiarNumero(d.presupuesto || 0);
+  document.getElementById('presupuesto').value  = presVal > 0 ? clp(presVal) : '$0';
+  document.getElementById('modoRedondeo').value = d.modoRedondeo || 'ceil';
+  document.getElementById('tipoMargen').value   = d.tipoMargen   || 'margen';
+  document.getElementById('globalUtil').value   = d.globalUtil   || 30;
+  // Modo oscuro: respetar preferencia guardada; si nunca se guardó, dark por defecto
+  if (d.dark === false) {
+    document.body.classList.remove('dark');
+  } else {
+    document.body.classList.add('dark');
+  }
+  document.getElementById('tbody').innerHTML = '';
+  (d.rows || []).forEach(r => addRow(r));
+  calcAll();
+}
+
+// ─────────────────────────────────────────────
+// NOMBRE ARCHIVO EXPORTADO (basado en importado)
+// ─────────────────────────────────────────────
+let importedFileHandle = null;   // File System Access API handle (si disponible)
+let importedFileSuffix = '';     // ej: "1079516-142-COT26"
+
+function extraerSufijo(nombre) {
+  // Espera formato: items-SUFIJO.xlsx  →  devuelve SUFIJO
+  // También acepta cualquier patrón separado por "-" ignorando la primera parte
+  const sin = nombre.replace(/\.(xlsx|xls)$/i, '');
+  const idx = sin.indexOf('-');
+  if (idx !== -1) return sin.slice(idx + 1);
+  return sin;
+}
+
+// ─────────────────────────────────────────────
+// EXPORTAR EXCEL
+// ─────────────────────────────────────────────
+async function guardarExcel() {
+  const rows = [];
+  document.querySelectorAll('#tbody tr').forEach((tr, i) => {
+    const qty     = limpiarNumero(tr.querySelector('.qty').value);
+    const pfull   = limpiarNumero(tr.querySelector('.pfull').value);
+    const costo   = pfull / 1.19;
+    const pct     = limpiarNumero(tr.querySelector('.util').value);
+    const vunit   = limpiarNumero(tr.querySelector('.vunit').value);
+    const total   = parseFloat(tr.querySelector('.total-display').dataset.raw) || 0;
+    const utilidad= parseFloat(tr.querySelector('.total-display').dataset.utilidad) || 0;
+    rows.push({
+      Item:            i + 1,
+      Cantidad:        qty,
+      Descripcion:     tr.querySelector('.desc').value,
+      'P.Full (c/IVA)':pfull,
+      'Costo Neto':    Math.round(costo),
+      'Utilidad %':    pct + '%',
+      'V.Unitario':    Math.round(vunit),
+      'Utilidad Fila': Math.round(utilidad),
+      'Total Fila':    Math.round(total),
+      SKU:             tr.querySelector('.sku').value,
+      Link:            tr.querySelector('.link').value,
+    });
+  });
+
+  // Fila resumen
+  rows.push({});
+  const sub  = limpiarNumero(document.getElementById('kpi-sub').textContent);
+  const neto = limpiarNumero(document.getElementById('kpi-neto').textContent);
+  const iva  = limpiarNumero(document.getElementById('kpi-iva').textContent);
+  const tot  = limpiarNumero(document.getElementById('kpi-total').textContent);
+  const util = limpiarNumero(document.getElementById('kpi-utilidad').textContent);
+  const mg   = document.getElementById('kpi-margen').textContent;
+  rows.push({ Descripcion:'SUBTOTAL',        'Total Fila': sub  });
+  rows.push({ Descripcion:'NETO (+FLETE)',    'Total Fila': neto });
+  rows.push({ Descripcion:'IVA 19%',         'Total Fila': iva  });
+  rows.push({ Descripcion:'TOTAL CON IVA',   'Total Fila': tot  });
+  rows.push({ Descripcion:'UTILIDAD TOTAL',  'Total Fila': util });
+  rows.push({ Descripcion:'MARGEN PONDERADO','Total Fila': mg   });
+  const fleteVal = limpiarNumero(document.getElementById('flete').value);
+  if (fleteVal > 0) rows.push({ Descripcion:'FLETE', 'Total Fila': fleteVal });
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Cotizacion');
+
+  // Nombre del archivo: Cotizacion-SUFIJO o Cotizacion-FECHA si no hay sufijo
+  const nombreBase = importedFileSuffix
+    ? `Cotizacion-${importedFileSuffix}`
+    : `Cotizacion-${new Date().toISOString().slice(0,10)}`;
+  const nombreArchivo = nombreBase + '.xlsx';
+
+  // Intentar guardar con diálogo nativo usando File System Access API (Chrome/Edge)
+  if (window.showSaveFilePicker) {
+    try {
+      const saveHandle = await window.showSaveFilePicker({
+        suggestedName: nombreArchivo,
+        types: [{ description: 'Excel', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }],
+      });
+      const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const writable = await saveHandle.createWritable();
+      await writable.write(new Blob([wbOut], { type: 'application/octet-stream' }));
+      await writable.close();
+      return;
+    } catch (err) {
+      if (err.name !== 'AbortError') console.warn('showSaveFilePicker falló:', err);
+    }
+  }
+
+  // Fallback: descarga normal del navegador
+  XLSX.writeFile(wb, nombreArchivo);
+}
+
+// ─────────────────────────────────────────────
+// IMPORTAR EXCEL
+// ─────────────────────────────────────────────
+document.getElementById('excelFile').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Guardar sufijo del nombre para el export
+  importedFileSuffix = extraerSufijo(file.name);
+
+  // Intentar capturar el FileSystemFileHandle para guardar en la misma carpeta
+  // (disponible via showOpenFilePicker; el input clásico no lo expone directamente)
+  // Chrome 86+ expone e.target.files[0].handle si se usó showOpenFilePicker,
+  // pero con <input type=file> no está disponible — guardamos null y usaremos showSaveFilePicker con startIn si el browser lo soporta.
+  // Para poder usar startIn con el directorio, necesitamos el directoryHandle.
+  // Workaround: usamos webkitRelativePath o simplemente showSaveFilePicker sin startIn.
+  importedFileHandle = null; // No disponible desde <input type=file>
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const data = new Uint8Array(evt.target.result);
+    const wb   = XLSX.read(data, { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    // Excluir filas vacías y filas de resumen generadas por el cotizador
+    const RESUMEN = new Set([
+      'SUBTOTAL',
+      'NETO (+FLETE)',
+      'IVA 19%',
+      'TOTAL CON IVA',
+      'UTILIDAD TOTAL',
+      'MARGEN PONDERADO',
+      'FLETE',
+    ]);
+    const itemRows = rows.filter(r => {
+      // Ignorar filas completamente vacías (fila separadora del Excel)
+      const tieneAlgo = Object.values(r).some(v => v !== null && v !== undefined && v !== '');
+      if (!tieneAlgo) return false;
+      const desc = (r.Descripcion || r.Descripción || r.Nombre || r.Producto || '').toString().trim().toUpperCase();
+      // Ignorar si es una fila de resumen
+      if (RESUMEN.has(desc)) return false;
+      return true;
+    });
+    // Restaurar flete si viene en el Excel
+    const fleteRow = rows.find(r => {
+      const desc = (r.Descripcion || '').toString().trim().toUpperCase();
+      return desc === 'FLETE';
+    });
+    if (fleteRow) {
+      const fleteEl = document.getElementById('flete');
+      fleteEl.value = clp(fleteRow['Total Fila'] || 0);
+    }
+
+    document.getElementById('tbody').innerHTML = '';
+    itemRows.forEach(r => {
+      addRow({
+        qty:  r.Cantidad || r.Cant || 1,
+        desc: r.Descripcion || r.Descripción || r.Nombre || r.Producto || '',
+        pfull:limpiarNumero(r['P.Full (c/IVA)'] || r.PFull || r['Precio Unitario'] || r['Precio unitario'] || 0),
+        util: limpiarNumero(r['Utilidad %'] || r.Utilidad || 30),
+        sku:  r.SKU || r.Código || r.Codigo || '',
+        link: r.Link || r['Link Proveedor'] || '',
+      });
+    });
+    saveLocal();
+  };
+  reader.readAsArrayBuffer(file);
+  e.target.value = '';
+});
+
+// ─────────────────────────────────────────────
+// EVENTOS GLOBALES
+// ─────────────────────────────────────────────
+['flete','presupuesto'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('blur',  () => { formatoInputCLP(el); calcAll(); saveLocal(); });
+  el.addEventListener('focus', () => { el.value = limpiarNumero(el.value) || ''; });
+});
+
+['modoRedondeo','tipoMargen'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    document.querySelectorAll('#tbody tr').forEach(calcRow);
+    saveLocal();
+  });
+});
+
+// ─────────────────────────────────────────────
+// PANEL IA — HELPERS
+// ─────────────────────────────────────────────
+function getItems() {
+  const items = [];
+  document.querySelectorAll('#tbody tr').forEach((tr, i) => {
+    const desc = tr.querySelector('.desc').value.trim();
+    if (!desc) return;
+    items.push({
+      index: i,
+      qty: limpiarNumero(tr.querySelector('.qty').value) || 1,
+      desc,
+      pfull: limpiarNumero(tr.querySelector('.pfull').value) || 0,
+    });
+  });
+  return items;
+}
+
+function setLoading(btnId, resultId, msg) {
+  const btn = document.getElementById(btnId);
+  if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spinner"></span>${msg}`; }
+  document.getElementById(resultId).innerHTML = `<div class="ai-loading"><span class="spin-big"></span>${msg}…</div>`;
+}
+
+function clearLoading(btnId, label) {
+  const btn = document.getElementById(btnId);
+  if (btn) { btn.disabled = false; btn.innerHTML = label; }
+}
+
+// ─────────────────────────────────────────────
+// OPENROUTER API KEY CONFIG
+// ─────────────────────────────────────────────
+function getApiKey() {
+  return localStorage.getItem('openrouterApiKey') || '';
+}
+
+function getSerpKey() {
+  return localStorage.getItem('serpApiKey') || '';
+}
+
+function closeApiConfig() {
+  document.getElementById('apiModal').style.display = 'none';
+}
+
+function saveApiKey() {
+  const val  = document.getElementById('apiKeyInput').value.trim();
+  const serp = document.getElementById('serpKeyInput').value.trim();
+  if (!val) { alert('Ingresa tu OpenRouter API Key.'); return; }
+  localStorage.setItem('openrouterApiKey', val);
+  if (serp) localStorage.setItem('serpApiKey', serp);
+  closeApiConfig();
+  alert('✅ Configuración guardada.');
+}
+
+function openApiConfig() {
+  document.getElementById('apiKeyInput').value  = getApiKey();
+  document.getElementById('serpKeyInput').value = getSerpKey();
+  document.getElementById('apiModal').style.display = 'flex';
+}
+
+async function callIA(systemPrompt, userContent) {
+  const key = getApiKey();
+  if (!key) { openApiConfig(); throw new Error('API Key no configurada'); }
+  // Proxy local Node.js — evita bloqueo CORS del navegador
+  const response = await fetch('http://localhost:3099/ia', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ apiKey: key, prompt: systemPrompt + '\n\n' + userContent }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Error del servidor: ' + response.status);
+  }
+  const data = await response.json();
+  const text = data.text || '';
+  const clean = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+  return JSON.parse(clean);
+}
+
+// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// BÚSQUEDA REAL CON SERPAPI — carga automática
+// ─────────────────────────────────────────────
+async function buscarYCargar(trOrIdx) {
+  // Obtener SIEMPRE la fila de datos real (nunca un panel de resultados)
+  let tr;
+  if (typeof trOrIdx === 'number') {
+    tr = Array.from(document.querySelectorAll('#tbody tr'))
+      .filter(r => !r.id.startsWith('opciones-fila-'))[trOrIdx];
+  } else {
+    // Si se pasa el elemento, asegurarse que sea una fila de datos
+    tr = trOrIdx.closest('tr');
+    if (tr && tr.id && tr.id.startsWith('opciones-fila-')) tr = null;
+  }
+  if (!tr) return;
+
+  // Verificar que sea una fila de datos con inputs
+  const descInput  = tr.querySelector('.desc');
+  const pfullInput = tr.querySelector('.pfull');
+  const linkInput  = tr.querySelector('.link');
+  const btn        = tr.querySelector('.btn-buscar-fila');
+
+  if (!descInput || !pfullInput) {
+    console.error('Fila inválida — no tiene inputs de datos'); return;
+  }
+
+  const desc = normalizarTexto(descInput.value.trim());
+  if (!desc) { alert('La fila no tiene descripción.'); return; }
+
+  // Calcular rowIdx real
+  const rowIdx = Array.from(document.querySelectorAll('#tbody tr'))
+    .filter(r => !r.id.startsWith('opciones-fila-'))
+    .indexOf(tr);
+
+  const serpKey = getSerpKey();
+  if (!serpKey) { openApiConfig(); alert('Ingresa tu Serper.dev API Key en ⚙️ primero.'); return; }
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳'; }
+
+  // Mostrar progreso en 3 pasos
+  mostrarProgresoBusqueda(rowIdx, desc, tr);
+
+  try {
+    const response = await fetch('http://localhost:3099/buscar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serpKey, apiKey: getApiKey(), query: desc }),
+    });
+    const data = await response.json();
+    if (!response.ok || data.error) throw new Error(data.error || 'Error del servidor');
+
+    const resultados = data.resultados || [];
+    const mejor      = data.mejor;
+    const razon      = data.razon || '';
+
+    if (!mejor && !resultados.length) {
+      alert('No se encontraron resultados para: ' + desc);
+      if (btn) { btn.disabled = false; btn.innerHTML = '🔍'; }
+      quitarProgreso(rowIdx);
+      return;
+    }
+
+    // La IA encontró candidatos pero ninguno coincide con el tipo de producto
+    if (!mejor && resultados.length && data.advertencia) {
+      quitarProgreso(rowIdx);
+      mostrarOpcionesFila(rowIdx, resultados.slice(0, 3), desc, null, data.razon, tr, false);
+      const panelId = 'opciones-fila-' + rowIdx;
+      const panel = document.getElementById(panelId);
+      if (panel) {
+        const aviso = document.createElement('div');
+        aviso.style.cssText = 'padding:10px 14px;background:#FEF3C7;border-top:1px solid #FDE68A;font-size:12px;color:#92400E;';
+        aviso.innerHTML = '⚠ ' + esc(data.advertencia);
+        panel.querySelector('td > div').prepend(aviso);
+      }
+      if (btn) { btn.disabled = false; btn.innerHTML = '⚠️'; btn.title = data.advertencia; }
+      return;
+    }
+
+    const ganador     = mejor || resultados[0];
+    // Precio: tomar verificado primero, luego de SerpAPI, siempre como número entero
+    const precioFinal = parseInt(ganador.precioVerificado || ganador.precio || 0, 10);
+
+    // Cargar precio en P.Full
+    if (precioFinal > 0 && pfullInput) {
+      pfullInput.value = precioFinal;
+      pfullInput.dispatchEvent(new Event('input'));
+      pfullInput.dispatchEvent(new Event('change'));
+      pfullInput.dispatchEvent(new Event('blur'));
+      console.log('✓ Precio cargado:', precioFinal);
+    } else {
+      console.warn('⚠ precioFinal inválido:', precioFinal);
+    }
+
+    // Cargar link directo al producto
+    if (ganador.link && linkInput) {
+      linkInput.value = ganador.link;
+      linkInput.dispatchEvent(new Event('input'));
+      linkInput.dispatchEvent(new Event('change'));
+    }
+
+    // Forzar recálculo de la fila
+    calcRow(tr);
+    calcAll();
+    saveLocal();
+    // Detectar y asignar categoría con IA en segundo plano
+    detectarYAsignarCategoria(tr, desc);
+
+    // Mostrar resultados con el ganador destacado
+    mostrarOpcionesFila(rowIdx, resultados.slice(0, 2), desc, ganador, razon, tr, data.desdeCache);
+    if (btn) {
+      btn.disabled = false;
+      const desdeCache = data.desdeCache === true ? false : !data.desdeCache;
+      btn.innerHTML = data.desdeCache ? '📦' : (ganador.stockConfirmado ? '✅' : '⚠️');
+      btn.title = data.desdeCache
+        ? 'Resultado desde caché local (sin gastar búsqueda Google)'
+        : (ganador.stockConfirmado ? 'Precio cargado — con stock' : 'Precio cargado — stock no confirmado');
+    }
+  } catch(e) {
+    console.error(e);
+    alert('Error al buscar: ' + e.message);
+    if (btn) { btn.disabled = false; btn.innerHTML = '🔍'; }
+    quitarProgreso(rowIdx);
+  }
+}
+
+function mostrarProgresoBusqueda(rowIdx, desc, trEl) {
+  quitarProgreso(rowIdx);
+  // Usar el elemento TR directamente si se pasa
+  const targetTr = trEl || Array.from(document.querySelectorAll('#tbody tr'))
+    .filter(r => !r.id.startsWith('opciones-fila-'))[rowIdx];
+  if (!targetTr) return;
+  const cols = targetTr.querySelectorAll('td').length;
+  const panel = document.createElement('tr');
+  panel.id = 'opciones-fila-' + rowIdx;
+  panel.innerHTML = `<td colspan="${cols}" style="padding:0;background:var(--soft);">
+    <div style="padding:12px 16px;display:flex;align-items:center;gap:12px;border-top:2px solid var(--accent);">
+      <span class="spin-big" style="display:inline-block;width:20px;height:20px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0"></span>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">Buscando mejor precio para: ${esc(desc)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">
+          <span id="paso1-${rowIdx}" style="opacity:.4">🔍 Paso 1: Google Shopping</span>
+          <span style="margin:0 6px;opacity:.3">→</span>
+          <span id="paso2-${rowIdx}" style="opacity:.4">🤖 Paso 2: IA filtra</span>
+          <span style="margin:0 6px;opacity:.3">→</span>
+          <span id="paso3-${rowIdx}" style="opacity:.4">✅ Paso 3: Verificando página</span>
+        </div>
+      </div>
+    </div>
+  </td>`;
+  targetTr.insertAdjacentElement('afterend', panel);
+  // Simular progreso visual
+  setTimeout(() => { const el = document.getElementById('paso1-'+rowIdx); if(el) el.style.opacity='1'; }, 300);
+  setTimeout(() => { const el = document.getElementById('paso2-'+rowIdx); if(el) el.style.opacity='1'; }, 2000);
+  setTimeout(() => { const el = document.getElementById('paso3-'+rowIdx); if(el) el.style.opacity='1'; }, 4000);
+}
+
+function quitarProgreso(rowIdx) {
+  const old = document.getElementById('opciones-fila-' + rowIdx);
+  if (old) old.remove();
+}
+
+function mostrarOpcionesFila(rowIdx, resultados, desc, ganador, razon, trEl, desdeCache) {
+  // Eliminar panel anterior
+  const oldPanel = document.getElementById('opciones-fila-' + rowIdx);
+  if (oldPanel) oldPanel.remove();
+
+  const targetTr = trEl || Array.from(document.querySelectorAll('#tbody tr'))
+    .filter(r => !r.id.startsWith('opciones-fila-'))[rowIdx];
+  if (!targetTr) return;
+
+  const cols = targetTr.querySelectorAll('td').length;
+  const panel = document.createElement('tr');
+  panel.id = 'opciones-fila-' + rowIdx;
+  panel.innerHTML = `<td colspan="${cols}" style="padding:0;background:var(--soft);">
+    <div style="padding:10px 14px;border-top:2px solid var(--accent);">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">
+        📊 Resultados para: <span style="color:var(--text)">${esc(desc)}</span>
+        ${razon ? `<span style="font-size:10px;font-weight:400;color:var(--accent);text-transform:none;margin-left:8px;">🤖 ${esc(razon)}</span>` : ''}
+        <button onclick="document.getElementById('opciones-fila-${rowIdx}').remove()" style="float:right;background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;">✕</button>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr>
+          <th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:10px;text-transform:uppercase">Producto</th>
+          <th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:10px;text-transform:uppercase">Tienda</th>
+          <th style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:10px;text-transform:uppercase">Precio</th>
+          <th style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:10px;text-transform:uppercase">Stock</th>
+          <th style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:10px;text-transform:uppercase;text-align:center" title="Índice de Selección">IS</th>
+          <th style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:10px;text-transform:uppercase;text-align:center">Nivel</th>
+          <th style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:10px;text-transform:uppercase;text-align:center" title="Riesgo Observación Técnica">ROT</th>
+          <th style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:10px;text-transform:uppercase"></th>
+        </tr></thead>
+        <tbody>
+          ${resultados.map((r, i) => {
+            const esGanador = ganador && r.link === ganador.link;
+            const precioCLP = esGanador && ganador.precioVerificado ? ganador.precioVerificado : r.precio;
+            const stockOk   = esGanador ? ganador.stockConfirmado : r.enStock;
+            const precioMin = Math.min(...resultados.map(x=>x.precio||x.precioVerificado||0).filter(p=>p>0));
+            const p_score   = precioCLP && precioMin ? Math.min(100, Math.round((precioMin/precioCLP)*100)) : 50;
+            const d_score   = stockOk ? 100 : 0;
+            const pv_score  = scorePV(r.tienda);
+            const ct_score  = esGanador ? (ganador.verificado ? 90 : 75) : 70;
+            const is_score  = Math.round((ct_score*0.50)+(p_score*0.25)+(d_score*0.15)+(pv_score*0.10));
+            const rot       = 100 - ct_score;
+            const nivelColor = is_score>=85?'var(--success)':is_score>=70?'#D97706':'var(--danger)';
+            const nivelLabel = ct_score>=95&&is_score>=85?'A':ct_score>=85&&is_score>=70?'B':ct_score>=60?'C':'X';
+            const nivelClass = {A:'is-A',B:'is-B',C:'is-C',X:'is-X'}[nivelLabel];
+            const rotClass   = rot<=10?'rot-low':rot<=30?'rot-mid':'rot-high';
+            const winBadge   = esGanador ? '<span style="background:var(--accent);color:#fff;border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700;margin-right:4px;">' + (ganador.verificado?'✅':'🏆') + '</span>' : '';
+            const stockHtml  = stockOk ? '<span style="color:var(--success);font-size:11px">✔ Stock</span>' : '<span style="color:var(--danger);font-size:11px">✗ Sin stock</span>';
+            const linkHtml   = r.link ? '<a class="link-chip" href="' + esc(r.link) + '" target="_blank" rel="noopener">🔗 Ver</a>' : '';
+            const usarHtml   = !esGanador ? ('<button class="btn-use-price" style="margin-left:4px" onclick="usarEstaOpcion(' + rowIdx + ',' + (r.precio||0) + ',&quot;' + esc(r.link||'') + '&quot;)">⬆ Usar</button>') : '';
+            return '<tr style="' + (esGanador?'background:var(--card);outline:2px solid var(--accent);':'') + '">'
+              + '<td style="padding:5px 8px;border-bottom:1px solid var(--border);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(r.titulo) + '">' + winBadge + esc(r.titulo.substring(0,45)) + (r.titulo.length>45?'…':'') + '</td>'
+              + '<td style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px">' + esc(r.tienda) + '</td>'
+              + '<td style="padding:5px 8px;border-bottom:1px solid var(--border);font-family:var(--mono);font-weight:' + (esGanador?'700':'400') + ';color:' + (esGanador?'var(--accent)':'var(--text)') + '">' + clp(precioCLP) + '</td>'
+              + '<td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;white-space:nowrap">' + stockHtml + '</td>'
+              + '<td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:700;font-size:13px;color:' + nivelColor + '">' + is_score + '</td>'
+              + '<td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center"><span class="is-badge ' + nivelClass + '" style="font-size:10px">' + nivelLabel + '</span></td>'
+              + '<td style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:center"><span class="rot-badge ' + rotClass + '">' + rot + '%</span></td>'
+              + '<td style="padding:5px 8px;border-bottom:1px solid var(--border);white-space:nowrap">' + linkHtml + ' ' + usarHtml + '</td>'
+              + '</tr>';
+          }).join('')}
+        ${desdeCache ? `<tr style="background:var(--soft);">
+          <td colspan="5" style="padding:6px 10px;font-size:11px;color:var(--muted);border-top:2px dashed var(--border);">
+            📦 <strong>Resultado desde caché local</strong> — no se gastó búsqueda Serper · Guardado: ${ganador && ganador.fecha ? ganador.fecha : 'hoy'}
+          </td>
+        </tr>` : ''}
+        </tbody>
+      </table>
+    </div>
+  </td>`;
+
+  targetTr.insertAdjacentElement('afterend', panel);
+}
+
+function usarEstaOpcion(rowIdx, precio, link) {
+  const tr = Array.from(document.querySelectorAll('#tbody tr'))
+    .filter(r => !r.id.startsWith('opciones-fila-'))[rowIdx];
+  if (!tr) return;
+  const pfullInput = tr.querySelector('.pfull');
+  if (!pfullInput) return;
+  pfullInput.value = parseInt(precio, 10);
+  pfullInput.dispatchEvent(new Event('input'));
+  pfullInput.dispatchEvent(new Event('blur'));
+  if (link) {
+    const linkInput = tr.querySelector('.link');
+    linkInput.value = link;
+    linkInput.dispatchEvent(new Event('input'));
+  }
+  calcRow(tr);
+  saveLocal();
+  const oldPanel = document.getElementById('opciones-fila-' + rowIdx);
+  if (oldPanel) oldPanel.remove();
+}
+
+
+// ─────────────────────────────────────────────
+// CACHÉ VIEWER
+// ─────────────────────────────────────────────
+async function verCache() {
+  document.getElementById('cache-result').innerHTML = '<div class="ai-loading"><span class="spin-big"></span>Cargando caché...</div>';
+  try {
+    const res  = await fetch('http://localhost:3099/cache');
+    const data = await res.json();
+    if (!data.entradas || !data.entradas.length) {
+      document.getElementById('cache-result').innerHTML = '<p style="font-size:13px;color:var(--muted);">El caché está vacío. Busca productos con 🔍 para empezar a llenarlo.</p>';
+      return;
+    }
+    const rows = data.entradas.map(e => `<tr>
+      <td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(e.producto)}">${esc(e.producto)}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:12px">${e.precio ? clp(e.precio) : '—'}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted)">${esc(e.tienda)}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted)">${e.fecha}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px;text-align:center">
+        <span style="background:${e.diasAtras <= 3 ? 'var(--success)' : e.diasAtras <= 7 ? '#F59E0B' : 'var(--danger)'};color:#fff;border-radius:4px;padding:1px 6px">${e.diasAtras}d</span>
+      </td>
+      <td style="padding:6px 10px;border-bottom:1px solid var(--border)">
+        ${e.link ? `<a class="link-chip" href="${esc(e.link)}" target="_blank" rel="noopener">🔗 Ver</a>` : '—'}
+      </td>
+    </tr>`).join('');
+    document.getElementById('cache-result').innerHTML = `
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:auto;">
+        <div style="padding:8px 12px;background:var(--soft);border-bottom:1px solid var(--border);font-size:12px;color:var(--muted)">
+          <strong style="color:var(--text)">${data.total} productos</strong> guardados · Se reutilizan automáticamente por 7 días
+        </div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--soft)">Producto</th>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--soft)">Precio</th>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--soft)">Tienda</th>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--soft)">Fecha</th>
+            <th style="padding:7px 10px;text-align:center;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--soft)">Edad</th>
+            <th style="padding:7px 10px;border-bottom:1px solid var(--border);background:var(--soft)"></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    document.getElementById('cache-result').innerHTML = '<p style="color:var(--danger);font-size:13px;">⚠ Error al leer el caché. ¿Está corriendo el servidor?</p>';
+  }
+}
+
+async function limpiarCache() {
+  if (!confirm('¿Limpiar todo el caché? Se perderán todos los precios guardados.')) return;
+  try {
+    await fetch('http://localhost:3099/cache', { method: 'DELETE' });
+    document.getElementById('cache-result').innerHTML = '<p style="color:var(--success);font-size:13px;">✅ Caché limpiado correctamente.</p>';
+  } catch(e) {
+    document.getElementById('cache-result').innerHTML = '<p style="color:var(--danger);font-size:13px;">⚠ Error al limpiar el caché.</p>';
+  }
+}
+
+
+// ─────────────────────────────────────────────
+// FILTRO DE CATEGORÍAS
+// ─────────────────────────────────────────────
+const CAT_LABELS = {
+  ferreteria : 'Ferretería',
+  iluminacion: 'Iluminación',
+  redes      : 'Redes',
+  electrico  : 'Eléctrico',
+  seguridad  : 'Seguridad',
+  tecnologia : 'Tecnología',
+  general    : 'General',
+};
+
+function getCatLabel(cat) {
+  return CAT_LABELS[cat] || '';
+}
+
+function setCategoriaFila(tr, categoria) {
+  if (!categoria) return;
+  const cat = categoria.toLowerCase().replace(/í/g,'i').replace(/é/g,'e').replace(/ó/g,'o').replace(/á/g,'a').replace(/ú/g,'u');
+  tr.dataset.categoria = cat;
+  tr.classList.forEach(c => { if (c.startsWith('cat-row-')) tr.classList.remove(c); });
+  tr.classList.add('cat-row-' + cat);
+  const badge = tr.querySelector('.cat-badge');
+  if (badge) {
+    badge.className = 'cat-badge cat-' + cat;
+    badge.textContent = CAT_LABELS[cat] || categoria;
+  }
+  actualizarFiltroBar();
+}
+
+function actualizarFiltroBar() {
+  const bar = document.getElementById('filtroBar');
+  if (!bar) return;
+
+  // Recopilar categorías existentes con conteo
+  const conteo = {};
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    if (tr.id && tr.id.startsWith('opciones-fila-')) return;
+    const cat = tr.dataset.categoria;
+    if (cat) conteo[cat] = (conteo[cat] || 0) + 1;
+  });
+
+  if (!Object.keys(conteo).length) {
+    bar.classList.remove('visible');
+    return;
+  }
+  bar.classList.add('visible');
+
+  // Reconstruir botones
+  const total = document.querySelectorAll('#tbody tr:not([id^="opciones-fila-"])').length;
+  let html = `<span class="filtro-label">Categoría:</span>
+    <button class="filtro-btn active" onclick="filtrarCategoria('todos',this)">Todos (${total})</button>`;
+  Object.entries(conteo).sort().forEach(([cat, n]) => {
+    html += `<button class="filtro-btn" onclick="filtrarCategoria('${cat}',this)">${CAT_LABELS[cat]||cat} (${n})</button>`;
+  });
+  bar.innerHTML = html;
+}
+
+function filtrarCategoria(cat, btn) {
+  // Marcar botón activo
+  document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  // Mostrar/ocultar filas
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    if (tr.id && tr.id.startsWith('opciones-fila-')) {
+      tr.style.display = 'none'; // Ocultar paneles de resultados al filtrar
+      return;
+    }
+    if (cat === 'todos') {
+      tr.style.display = '';
+    } else {
+      tr.style.display = tr.dataset.categoria === cat ? '' : 'none';
+    }
+  });
+}
+
+// Detectar categoría con IA y asignarla a la fila
+async function detectarYAsignarCategoria(tr, desc) {
+  const SYSTEM = `Clasifica el siguiente producto en UNA de estas categorías exactas (responde solo la palabra):
+ferreteria, iluminacion, redes, electrico, seguridad, tecnologia, general`;
+  try {
+    const res = await callIA(SYSTEM, desc);
+    const cat = (res || '').toLowerCase().trim()
+      .replace(/í/g,'i').replace(/é/g,'e').replace(/ó/g,'o').replace(/á/g,'a').replace(/ú/g,'u')
+      .replace(/[^a-z]/g,'');
+    if (CAT_LABELS[cat]) setCategoriaFila(tr, cat);
+    else setCategoriaFila(tr, 'general');
+  } catch(e) {
+    setCategoriaFila(tr, 'general');
+  }
+}
+
+
+// ═════════════════════════════════════════════════════
+// ÍNDICE DE SELECCIÓN (IS) — Fase 2
+// IS = CT×0.50 + P×0.25 + D×0.15 + PV×0.10
+// ═════════════════════════════════════════════════════
+
+// Evaluar tipo de proveedor → PV score
+function scorePV(tienda) {
+  const t = (tienda || '').toLowerCase();
+  if (/(spdigital|pc\.?factory|winpy|sodimac|falabella|ripley|easy|abcdin|paris)/i.test(t)) return 100;
+  if (/(cisco|hp|dell|samsung|lg|hikvision|dahua|asus|lenovo|brother)/i.test(t)) return 100;
+  if (/(wisp|soluciones|distribuid|tecn|redes|electr)/i.test(t)) return 85;
+  if (/mercadolibre|mercado libre/i.test(t)) return 70;
+  return 40;
+}
+
+// Evaluar stock → D score
+function scoreD(enStock, stockTexto) {
+  const t = (stockTexto || '').toLowerCase();
+  if (!enStock || /agotado|sin stock|no disponible/i.test(t)) return 0;
+  if (/pedido|días|semanas|importa/i.test(t)) return 70;
+  if (/disponible|en stock|stock/i.test(t) || enStock) return 100;
+  return 70;
+}
+
+// Calcular precio relativo → P score
+function scoreP(precioProducto, precioMinimo) {
+  if (!precioProducto || !precioMinimo) return 50;
+  return Math.min(100, Math.round((precioMinimo / precioProducto) * 100));
+}
+
+// Calcular CT con IA
+async function calcularCT(descripcionProducto, requisitos, tituloResultado, snippetResultado) {
+  if (!requisitos || requisitos.trim().length < 5) {
+    // Sin requisitos técnicos → inferir desde descripción
+    const prompt = `Producto buscado: "${descripcionProducto}"
+Resultado encontrado: "${tituloResultado} — ${snippetResultado}"
+¿Este resultado corresponde al producto buscado? Evalúa el cumplimiento técnico del 0 al 100.
+Responde SOLO con JSON: { "ct": número, "cumplidos": número, "solicitados": número, "detalle": "breve explicación" }`;
+    try {
+      const r = await callIA('Eres experto en evaluación técnica de productos. Responde SOLO con JSON válido sin backticks.', prompt);
+      return { ct: r.ct || 50, cumplidos: r.cumplidos || 1, solicitados: r.solicitados || 2, detalle: r.detalle || '' };
+    } catch(e) { return { ct: 70, cumplidos: 1, solicitados: 1, detalle: 'Evaluación automática' }; }
+  }
+
+  // Con requisitos explícitos → verificar cada uno
+  const prompt = `Producto buscado: "${descripcionProducto}"
+Requisitos técnicos exigidos: "${requisitos}"
+Resultado encontrado: "${tituloResultado} — ${snippetResultado}"
+
+Verifica cuántos requisitos cumple el resultado encontrado.
+Responde SOLO con JSON válido sin backticks:
+{ "ct": número_0_a_100, "cumplidos": número, "solicitados": número, "detalle": "qué cumple y qué no" }`;
+
+  try {
+    const r = await callIA('Eres experto evaluador técnico. Responde SOLO con JSON válido sin backticks ni texto extra.', prompt);
+    return { ct: r.ct || 0, cumplidos: r.cumplidos || 0, solicitados: r.solicitados || 1, detalle: r.detalle || '' };
+  } catch(e) { return { ct: 50, cumplidos: 1, solicitados: 2, detalle: 'Error al evaluar' }; }
+}
+
+// Calcular IS completo para un resultado
+async function calcularIS(resultado, descripcion, requisitos, precioMinimo) {
+  const ct_data = await calcularCT(descripcion, requisitos, resultado.titulo, resultado.snippet || '');
+  const ct  = ct_data.ct;
+  const p   = scoreP(resultado.precio || resultado.precioVerificado, precioMinimo);
+  const d   = scoreD(resultado.enStock, resultado.titulo + ' ' + (resultado.snippet || ''));
+  const pv  = scorePV(resultado.tienda);
+  const rot = 100 - ct;
+
+  // Fórmula IS completa
+  const is = Math.round((ct * 0.50) + (p * 0.25) + (d * 0.15) + (pv * 0.10));
+
+  // Nivel A/B/C
+  let nivel, nivelClass;
+  if (ct >= 95 && is >= 85)      { nivel = 'A — Recomendado';   nivelClass = 'is-A'; }
+  else if (ct >= 85 && is >= 70) { nivel = 'B — Alternativa';   nivelClass = 'is-B'; }
+  else if (ct >= 60)             { nivel = 'C — Solo si flexible'; nivelClass = 'is-C'; }
+  else                           { nivel = 'X — Descartado';    nivelClass = 'is-X'; }
+
+  return { is, ct, p, d, pv, rot, nivel, nivelClass, ct_data };
+}
+
+
+
+
+// ─────────────────────────────────────────────
+// NORMALIZADOR DE TEXTO
+// ─────────────────────────────────────────────
+function normalizarTexto(texto) {
+  if (!texto) return '';
+  return texto
+    // Correcciones ortográficas comunes en licitaciones
+    .replace(/\bwinwows\b/gi, 'Windows')
+    .replace(/\bwindos\b/gi, 'Windows')
+    .replace(/\b(ama|amq|adn)\b/gi, 'AMD')
+    .replace(/\bryzer\b/gi, 'Ryzen')
+    .replace(/\brizem\b/gi, 'Ryzen')
+    .replace(/\bintel\b/gi, 'Intel')
+    .replace(/\bcorei\b/gi, 'Core i')
+    .replace(/\blaptop\b/gi, 'Notebook')
+    .replace(/\bnotbook\b/gi, 'Notebook')
+    .replace(/\bnotebbok\b/gi, 'Notebook')
+    .replace(/\bhidrolik\b/gi, 'Hidráulico')
+    .replace(/\belectrico\b/gi, 'Eléctrico')
+    .replace(/\bneumatico\b/gi, 'Neumático')
+    // Normalizar unidades de medida
+    .replace(/\b(\d+)\s*tb\b/gi, (m, n) => parseInt(n) > 10 ? n+'GB' : n+'TB')
+    .replace(/\b(\d+)\s*gb\b/gi, '$1GB')
+    .replace(/\b(\d+)\s*mb\b/gi, '$1MB')
+    .replace(/\b(\d+)\s*mhz\b/gi, '$1MHz')
+    .replace(/\b(\d+)\s*ghz\b/gi, '$1GHz')
+    // Limpiar caracteres raros
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// ─────────────────────────────────────────────
+// LECTOR DE PDF
+// ─────────────────────────────────────────────
+async function leerPDF(file) {
+  // Usar el servidor para extraer texto del PDF
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      try {
+        // Convertir a base64 en chunks para evitar stack overflow con PDFs grandes
+        const uint8 = new Uint8Array(e.target.result);
+        let binary  = '';
+        const chunk = 8192;
+        for (let i = 0; i < uint8.length; i += chunk) {
+          binary += String.fromCharCode(...uint8.subarray(i, i + chunk));
+        }
+        const base64 = btoa(binary);
+        const response = await fetch('http://localhost:3099/pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pdf: base64, apiKey: getApiKey() }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Error del servidor');
+        resolve(data.items || []);
+      } catch(err) {
+        reject(err);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+document.getElementById('pdfFile').addEventListener('change', async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const btn = document.querySelector('button[onclick*="pdfFile"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Leyendo...'; }
+  
+  try {
+    const items = await leerPDF(file);
+    if (!items.length) {
+      alert('No se encontraron ítems en el PDF. Verifica que tenga columnas de Cantidad y Descripción.');
+      return;
+    }
+    
+    // Confirmar antes de cargar
+    const confirmMsg = `Se encontraron ${items.length} ítems en el PDF:\n\n` + 
+      items.slice(0, 5).map(it => `• ${it.qty} x ${it.desc.substring(0,50)}`).join('\n') +
+      (items.length > 5 ? `\n... y ${items.length - 5} más` : '') +
+      '\n\n¿Cargar al cotizador?';
+    
+    if (!confirm(confirmMsg)) return;
+    
+    document.getElementById('tbody').innerHTML = '';
+    items.forEach(it => {
+      addRow({
+        qty : it.qty || 1,
+        desc: normalizarTexto(it.desc),
+        sku : it.sku || '',
+      });
+    });
+    calcAll();
+    saveLocal();
+    alert(`✅ ${items.length} ítems cargados desde el PDF.`);
+  } catch(err) {
+    alert('Error al leer el PDF: ' + err.message);
+    console.error(err);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📄 PDF'; }
+    e.target.value = '';
+  }
+});
+
+
+// Guardar precio/link actual de una fila en el caché local
+async function guardarFilaEnCache(tr) {
+  if (!tr) return;
+  const desc  = tr.querySelector('.desc')?.value.trim();
+  const pfull = limpiarNumero(tr.querySelector('.pfull')?.value);
+  const link  = tr.querySelector('.link')?.value.trim();
+  if (!desc) { alert('La fila no tiene descripción.'); return; }
+  if (!pfull || pfull <= 0) { alert('Ingresa un precio antes de guardar.'); return; }
+
+  const mejor = {
+    titulo         : desc,
+    tienda         : link ? link.replace(/https?:\/\/([^/]+).*/, '$1').replace('www.','') : 'Manual',
+    precio         : pfull,
+    precioVerificado: pfull,
+    link           : link || '',
+    enStock        : true,
+    stockConfirmado: true,
+    verificado     : true,
+    fuente         : 'manual',
+  };
+
+  try {
+    const res  = await fetch('http://localhost:3099/cache-save', {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ query: desc, mejor }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const btn = tr.querySelector('.btn-save-cache');
+      if (btn) { btn.innerHTML = '✅'; setTimeout(() => btn.innerHTML = '💾', 2000); }
+    }
+  } catch(e) {
+    alert('Error al guardar en caché: ' + e.message);
+  }
+}
+
+
+// Copiar valor al portapapeles
+function copiarAlPortapapeles(valor) {
+  if (!valor) return;
+  // Limpiar formato y dejar solo número
+  const num = valor.replace(/[^0-9]/g, '');
+  if (!num) return;
+  navigator.clipboard.writeText(num).then(() => {
+    // Mostrar tooltip breve
+    const tip = document.createElement('div');
+    tip.textContent = '✓ Copiado: ' + valor;
+    tip.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--accent);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.3)';
+    document.body.appendChild(tip);
+    setTimeout(() => tip.remove(), 2000);
+  }).catch(() => {
+    // Fallback para navegadores sin clipboard API
+    const el = document.createElement('textarea');
+    el.value = num;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+  });
+}
+
+
+// ─────────────────────────────────────────────
+// BARRA DE PRESUPUESTO EN TIEMPO REAL
+// ─────────────────────────────────────────────
+function actualizarBarraPresupuesto(total, pres) {
+  const wrap = document.getElementById('budgetBarWrap');
+  const fill = document.getElementById('budgetFill');
+  const pct  = document.getElementById('budgetPct');
+  const used = document.getElementById('budgetUsed');
+  const left = document.getElementById('budgetLeft');
+  if (!pres || pres <= 0) { wrap.classList.remove('visible'); return; }
+  wrap.classList.add('visible');
+  const ratio   = Math.min((total / pres) * 100, 100);
+  const sobrante = pres - total;
+  pct.textContent  = ratio.toFixed(1) + '%';
+  used.textContent = 'Utilizado: ' + clp(total);
+  left.textContent = sobrante >= 0 ? 'Disponible: ' + clp(sobrante) : 'Excedido: ' + clp(Math.abs(sobrante));
+  fill.style.width = ratio + '%';
+  fill.className   = 'budget-bar-fill' + (ratio >= 100 ? ' danger' : ratio >= 85 ? ' warn' : '');
+  pct.style.color  = ratio >= 100 ? 'var(--danger)' : ratio >= 85 ? '#D97706' : 'var(--success)';
+}
+
+// ─────────────────────────────────────────────
+// HISTORIAL DE COTIZACIONES
+// ─────────────────────────────────────────────
+const HIST_KEY = 'cotizadorHistorial_v1';
+
+function cargarHistorial() {
+  try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function guardarHistorialStorage(hist) {
+  localStorage.setItem(HIST_KEY, JSON.stringify(hist.slice(0, 50)));
+}
+
+function toggleHist() {
+  const body    = document.getElementById('histBody');
+  const chevron = document.getElementById('histChevron');
+  const isOpen  = body.classList.toggle('open');
+  chevron.textContent = isOpen ? '▲' : '▼';
+  if (isOpen) renderHistorial();
+}
+
+function renderHistorial() {
+  const hist = cargarHistorial();
+  const list = document.getElementById('histList');
+  if (!hist.length) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--muted);text-align:center;padding:12px">No hay cotizaciones guardadas aún.</p>';
+    return;
+  }
+  list.innerHTML = hist.map((h, i) => `
+    <div class="hist-item">
+      <span class="hi-name" title="${esc(h.nombre)}">${esc(h.nombre)}</span>
+      <span class="hi-total">${h.total || '$0'}</span>
+      <span class="hi-date">${h.fecha}</span>
+      <button class="hi-btn" onclick="cargarDesdeHistorial(${i})">📂 Cargar</button>
+      <button class="hi-btn" onclick="eliminarDeHistorial(${i})" style="color:var(--danger)">✕</button>
+    </div>
+  `).join('');
+}
+
+function guardarEnHistorial() {
+  const nombre = document.getElementById('histNombre').value.trim();
+  if (!nombre) { alert('Ingresa un nombre para esta cotización.'); return; }
+  const total  = document.getElementById('kpi-total')?.textContent || '$0';
+  const pres   = document.getElementById('presupuesto')?.value || '$0';
+  const rows   = [];
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    if (tr.id && tr.id.startsWith('opciones-fila-')) return;
+    if (!tr.querySelector('.desc')) return;
+    rows.push({
+      qty      : tr.querySelector('.qty')?.value || '',
+      desc     : tr.querySelector('.desc')?.value || '',
+      pfull    : tr.querySelector('.pfull')?.value || '',
+      util     : tr.querySelector('.util')?.value || '',
+      sku      : tr.querySelector('.sku')?.value || '',
+      link     : tr.querySelector('.link')?.value || '',
+      requisitos: tr.querySelector('.req-input')?.value || '',
+    });
+  });
+  const entrada = {
+    nombre,
+    total,
+    presupuesto: pres,
+    fecha : new Date().toLocaleDateString('es-CL'),
+    flete : document.getElementById('flete')?.value || '$0',
+    util  : document.getElementById('globalUtil')?.value || '30',
+    rows,
+  };
+  const hist = cargarHistorial();
+  hist.unshift(entrada);
+  guardarHistorialStorage(hist);
+  document.getElementById('histNombre').value = '';
+  renderHistorial();
+  const btn = document.querySelector('button[onclick="guardarEnHistorial()"]');
+  if (btn) { btn.textContent = '✅ Guardado'; setTimeout(() => btn.textContent = '💾 Guardar cotización', 2000); }
+}
+
+function cargarDesdeHistorial(idx) {
+  const hist = cargarHistorial();
+  const h    = hist[idx];
+  if (!h) return;
+  if (!confirm(`¿Cargar la cotización "${h.nombre}"? Se reemplazará la cotización actual.`)) return;
+  // Restaurar campos
+  if (h.presupuesto) document.getElementById('presupuesto').value = h.presupuesto;
+  if (h.flete)       document.getElementById('flete').value = h.flete;
+  if (h.util)        document.getElementById('globalUtil').value = h.util;
+  // Limpiar y cargar filas
+  document.getElementById('tbody').innerHTML = '';
+  (h.rows || []).forEach(r => addRow(r));
+  calcAll();
+  saveLocal();
+  // Cerrar panel
+  document.getElementById('histBody').classList.remove('open');
+  document.getElementById('histChevron').textContent = '▼';
+  alert(`✅ Cotización "${h.nombre}" cargada — ${h.rows?.length || 0} ítems.`);
+}
+
+function eliminarDeHistorial(idx) {
+  const hist = cargarHistorial();
+  if (!confirm(`¿Eliminar "${hist[idx]?.nombre}"?`)) return;
+  hist.splice(idx, 1);
+  guardarHistorialStorage(hist);
+  renderHistorial();
+}
+
+// ─────────────────────────────────────────────
+// GUARDADO MASIVO DE LINKS EN CACHÉ
+// ─────────────────────────────────────────────
+async function buscarTodosLosItems() {
+  const trs = Array.from(document.querySelectorAll('#tbody tr'))
+    .filter(tr => !tr.id?.startsWith('opciones-fila-') && tr.querySelector('.desc'));
+
+  // Solo buscar filas que tengan descripción pero no tengan link
+  const pendientes = trs.filter(tr => {
+    const desc = tr.querySelector('.desc')?.value.trim();
+    const link = tr.querySelector('.link')?.value.trim();
+    return desc && !link;
+  });
+
+  if (!pendientes.length) {
+    alert('Todas las filas ya tienen link. Para rebuscar, borra los links primero.');
+    return;
+  }
+
+  const btn = document.getElementById('btnBuscarTodos');
+  if (btn) { btn.disabled = true; }
+
+  // Crear panel de progreso global
+  let progPanel = document.getElementById('prog-masivo');
+  if (!progPanel) {
+    progPanel = document.createElement('div');
+    progPanel.id = 'prog-masivo';
+    progPanel.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 20px;z-index:9999;min-width:320px;box-shadow:0 8px 30px rgba(0,0,0,.2);text-align:center';
+    document.body.appendChild(progPanel);
+  }
+
+  let ok = 0, errores = 0;
+  for (let i = 0; i < pendientes.length; i++) {
+    const tr   = pendientes[i];
+    const desc = tr.querySelector('.desc').value.trim();
+    progPanel.innerHTML = `
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">🔍 Buscando precios masivo</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${esc(desc.substring(0,50))}${desc.length>50?'…':''}</div>
+      <div style="background:var(--border);border-radius:4px;height:6px;margin-bottom:6px">
+        <div style="background:var(--accent);height:6px;border-radius:4px;width:${Math.round(((i)/pendientes.length)*100)}%;transition:width .3s"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">${i+1} de ${pendientes.length} — ✅ ${ok} listos · ❌ ${errores} sin resultado</div>
+    `;
+    try {
+      await buscarYCargar(tr);
+      ok++;
+    } catch(e) {
+      errores++;
+    }
+    // Pausa entre búsquedas para no saturar Serper
+    if (i < pendientes.length - 1) await new Promise(r => setTimeout(r, 1500));
+  }
+
+  progPanel.innerHTML = `
+    <div style="font-size:13px;font-weight:600;margin-bottom:6px">✅ Búsqueda masiva completada</div>
+    <div style="font-size:12px;color:var(--muted)">${ok} con resultado · ${errores} sin resultado</div>
+    <button onclick="document.getElementById('prog-masivo').remove()" style="margin-top:8px;font-size:12px;padding:4px 12px;border-radius:5px;border:1px solid var(--border);background:var(--card);cursor:pointer">Cerrar</button>
+  `;
+  if (btn) { btn.disabled = false; }
+  calcAll();
+  saveLocal();
+}
+
+// ─────────────────────────────────────────────
+// INICIO
+// ─────────────────────────────────────────────
+loadLocal();
+</script>
+<!-- MODAL API KEY -->
+<div id="apiModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;width:420px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,.3);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+      <span style="font-size:22px;">🔑</span>
+      <div>
+        <div style="font-weight:700;font-size:15px;">Configuración de API Keys</div>
+        <div style="font-size:11px;color:var(--muted);">Se guardan localmente en tu navegador</div>
+      </div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">
+      OpenRouter (IA) — <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" style="color:var(--accent);font-weight:400;text-transform:none;">openrouter.ai/keys</a>
+    </div>
+    <input id="apiKeyInput" type="password" placeholder="sk-or-v1-..." autocomplete="off"
+      style="width:100%;padding:9px 12px;font-size:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:var(--mono);margin-bottom:14px;outline:none;box-sizing:border-box;">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">
+      Serper.dev (búsqueda real) — <a href="https://serper.dev" target="_blank" rel="noopener" style="color:var(--accent);font-weight:400;text-transform:none;">serper.dev</a>
+      <span style="background:#DCFCE7;color:#166534;border-radius:4px;padding:1px 5px;font-size:10px;margin-left:4px;text-transform:none;letter-spacing:0;">2500 búsquedas gratis</span>
+    </div>
+    <input id="serpKeyInput" type="password" placeholder="Pega aquí tu Serper.dev API Key..." autocomplete="off"
+      style="width:100%;padding:9px 12px;font-size:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-family:var(--mono);margin-bottom:18px;outline:none;box-sizing:border-box;">
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn" onclick="closeApiConfig()">Cancelar</button>
+      <button class="btn primary" onclick="saveApiKey()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
