@@ -55,7 +55,7 @@ echo.
 start /b cmd /c "timeout /t 3 /nobreak >nul && start "" Cotizador_Pro_V9.html"
 
 :: Minimizar despues de 2 segundos
-start /b cmd /c "timeout /t 2 /nobreak >nul && powershell -WindowStyle Hidden -Command (New-Object -ComObject Shell.Application).MinimizeAll()"
+rem minimizar deshabilitado
 
 :: Arrancar servidor (ventana queda abierta con logs)
 node servidor.js
