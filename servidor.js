@@ -132,10 +132,13 @@ function esUrlListado(url) {
 // FIREBASE FIRESTORE — Base de datos propia de productos
 // Consulta la colección "producto" de jyg-inversiones
 // ─────────────────────────────────────────────────────────
-const FIRESTORE_PROJECT = 'jyg-inversiones';
-const FIRESTORE_COLLECTION = 'producto';
-const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT}/databases/(default)/documents/${FIRESTORE_COLLECTION}`;
-const FIRESTORE_APIKEY = 'AIzaSyCmb0o93hyPjK5zAVX1hqxSxMJXH3oBHaE';
+const FIRESTORE_PROJECT    = 'jyg-inversiones';
+const FIRESTORE_APIKEY     = 'AIzaSyCmb0o93hyPjK5zAVX1hqxSxMJXH3oBHaE';
+const FIRESTORE_BASE       = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT}/databases/(default)/documents`;
+const FIRESTORE_COLLECTION = 'producto';        // Solo lectura — catálogo propio
+const FIRESTORE_LINKS      = 'links_compras';   // Lectura y escritura — links encontrados
+const FIRESTORE_URL        = `${FIRESTORE_BASE}/${FIRESTORE_COLLECTION}`;
+const FIRESTORE_LINKS_URL  = `${FIRESTORE_BASE}/${FIRESTORE_LINKS}`;
 
 function fetchFirestore(query) {
   return new Promise((resolve) => {
@@ -209,6 +212,117 @@ async function buscarEnFirebase(query) {
   } catch(e) {
     log(C.yellow, `  ⚠ Firebase error: ${e.message}`);
     return [];
+  }
+}
+
+
+// ── Buscar en links_compras (links reales encontrados) ────
+function fetchLinksCompras(query) {
+  return new Promise((resolve) => {
+    // Usar runQuery para buscar por nombre similar
+    const url  = new URL(`${FIRESTORE_BASE}:runQuery?key=${FIRESTORE_APIKEY}`);
+    const body = JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: FIRESTORE_LINKS }],
+        limit: 5,
+      }
+    });
+    const opts = {
+      hostname: url.hostname,
+      path    : url.pathname + url.search,
+      method  : 'POST',
+      headers : { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    };
+    const req = https.request(opts, res => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
+        catch(e) { resolve([]); }
+      });
+    });
+    req.on('error', () => resolve([]));
+    req.write(body);
+    req.end();
+  });
+}
+
+async function buscarEnLinksCompras(query) {
+  try {
+    // Obtener todos los docs de links_compras y filtrar por score local
+    const url  = new URL(FIRESTORE_LINKS_URL + '?key=' + FIRESTORE_APIKEY + '&pageSize=200');
+    const opts = { hostname: url.hostname, path: url.pathname + url.search, method: 'GET', headers: { 'Accept': 'application/json' } };
+    const docs = await new Promise((resolve) => {
+      const req = https.request(opts, res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => {
+          try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')).documents || []); }
+          catch(e) { resolve([]); }
+        });
+      });
+      req.on('error', () => resolve([]));
+      req.end();
+    });
+
+    if (!docs.length) return [];
+    const resultados = [];
+    for (const doc of docs) {
+      const f      = doc.fields || {};
+      const nombre = f.nombre?.stringValue || '';
+      const precio = parseInt(f.precio?.integerValue || f.precio?.doubleValue || 0, 10);
+      const link   = f.link?.stringValue || '';
+      const tienda = f.tienda?.stringValue || '';
+      const score  = scoreFirestore(query, nombre);
+      if (score >= 50 && nombre && precio > 0 && link) {
+        resultados.push({ titulo: nombre, tienda, precio, link, enStock: true, fuente: 'links_compras', score });
+      }
+    }
+    return resultados.sort((a,b) => b.score - a.score).slice(0, 3);
+  } catch(e) {
+    log(C.yellow, `  ⚠ links_compras error: ${e.message}`);
+    return [];
+  }
+}
+
+// ── Guardar en links_compras ──────────────────────────────
+async function guardarEnLinksCompras(query, resultado) {
+  if (!resultado || !resultado.link || !resultado.precio) return;
+  try {
+    const body = JSON.stringify({
+      fields: {
+        nombre   : { stringValue: query },
+        precio   : { integerValue: String(resultado.precioVerificado || resultado.precio) },
+        link     : { stringValue: resultado.link },
+        tienda   : { stringValue: resultado.tienda || '' },
+        fecha    : { stringValue: new Date().toLocaleDateString('es-CL') },
+        fechaMs  : { integerValue: String(Date.now()) },
+        fuente   : { stringValue: resultado.fuente || 'serper' },
+        score    : { integerValue: String(resultado.score || 0) },
+      }
+    });
+    const url  = new URL(FIRESTORE_LINKS_URL + '?key=' + FIRESTORE_APIKEY);
+    const opts = {
+      hostname: url.hostname, path: url.pathname + url.search, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    };
+    await new Promise((resolve) => {
+      const req = https.request(opts, res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => {
+          const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+          if (data.name) log(C.green, `  ✓ Guardado en links_compras: "${query}"`);
+          else log(C.yellow, `  ⚠ links_compras write: ${JSON.stringify(data).substring(0,80)}`);
+          resolve();
+        });
+      });
+      req.on('error', e => { log(C.yellow, `  ⚠ links_compras write error: ${e.message}`); resolve(); });
+      req.write(body);
+      req.end();
+    });
+  } catch(e) {
+    log(C.yellow, `  ⚠ guardarEnLinksCompras error: ${e.message}`);
   }
 }
 
@@ -913,12 +1027,22 @@ ${pdfTexto}`;
     if (!serpKey) { sendJSON(res, 400, { error: 'Serper API Key no configurada' }); return; }
 
     try {
-      // PASO 0: Firebase — base de datos propia (gratis, instantáneo)
-      log(C.dim, '  [0/3] Firebase (base propia)...');
+      // PASO 0a: links_compras — links reales encontrados anteriormente
+      log(C.dim, '  [0a/3] links_compras (BD de links)...');
+      const lcRes = await buscarEnLinksCompras(query);
+      log(C.dim, `  → links_compras: ${lcRes.length} resultados`);
+      if (lcRes.length > 0 && lcRes[0].score >= 70) {
+        const mejor = { ...lcRes[0], verificado: true, stockConfirmado: true, precioVerificado: lcRes[0].precio };
+        guardarEnCache(query, lcRes, mejor);
+        log(C.green, `✓ links_compras match: "${mejor.titulo}" $${mejor.precio} (score ${lcRes[0].score})`);
+        sendJSON(res, 200, { resultados: lcRes, mejor, razon: `🔗 Link guardado anteriormente (${lcRes[0].score}% coincidencia)`, desdeCache: false, desdeFirebase: true });
+        return;
+      }
+
+      // PASO 0b: Firebase producto — catálogo propio
+      log(C.dim, '  [0b/3] Firebase producto (catálogo)...');
       const fbRes = await buscarEnFirebase(query);
       log(C.dim, `  → Firebase: ${fbRes.length} resultados`);
-
-      // Si Firebase encontró match con score alto (≥70), usarlo directamente
       if (fbRes.length > 0 && fbRes[0].score >= 70) {
         const mejor = { ...fbRes[0], verificado: true, stockConfirmado: true, precioVerificado: fbRes[0].precio };
         guardarEnCache(query, fbRes, mejor);
