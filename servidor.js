@@ -947,14 +947,28 @@ ${pdfTexto}`;
     return;
   }
 
-  // POST /cache-save — guardar resultado manual en caché
+  // POST /cache-save — guardar en caché LOCAL + Firebase links_compras
   if (req.method === 'POST' && url === '/cache-save') {
     let b;
     try { b = JSON.parse(await readBody(req)); } catch { sendJSON(res, 400, { error: 'Body inválido' }); return; }
     const { query, mejor } = b;
     if (!query || !mejor) { sendJSON(res, 400, { error: 'Faltan datos' }); return; }
+
+    // 1. Guardar en caché local (cotizador_cache.json)
     guardarEnCache(query, [mejor], mejor);
-    log(C.green, `✓ Cache manual guardado: "${query}" $${mejor.precio}`);
+    log(C.green, `✓ Cache local guardado: "${query}" $${mejor.precio}`);
+
+    // 2. Guardar en Firebase links_compras
+    const precio = mejor.precioVerificado || mejor.precio || 0;
+    if (mejor.link && precio > 0) {
+      log(C.cyan, `  → Guardando en Firebase links_compras...`);
+      try {
+        await guardarEnLinksCompras(query, mejor);
+      } catch(e) {
+        log(C.yellow, `  ⚠ Firebase error: ${e.message}`);
+      }
+    }
+
     sendJSON(res, 200, { ok: true });
     return;
   }
@@ -1153,14 +1167,7 @@ ${pdfTexto}`;
       }
 
       guardarEnCache(query, candidatos, mejor);
-      // Guardar en Firebase links_compras
-      const precioFB = mejor.precioVerificado || mejor.precio || 0;
-      if (mejor.link && precioFB > 0) {
-        log(C.cyan, `  → Guardando en Firebase: "${query.substring(0,40)}" $${precioFB}`);
-        guardarEnLinksCompras(query, mejor).catch(e => log(C.red, `  ✗ links_compras error: ${e.message}`));
-      } else {
-        log(C.yellow, `  ⚠ No se guarda en Firebase: link="${mejor.link}" precio=${precioFB}`);
-      }
+      // Firebase: solo se guarda cuando el usuario aprueba con 💾
       log(C.green, `✓ "${mejor.titulo?.substring(0,50)}" $${mejor.precioVerificado||mejor.precio}`);
       sendJSON(res, 200, { resultados: candidatos, mejor, razon: eleccion.razon, desdeCache: false });
 

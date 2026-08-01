@@ -1026,7 +1026,7 @@ function addRow(data = {}) {
     </td>
     <td class="col-del">
       <button class="btn-buscar-fila" title="Buscar precio real en Google" onclick="buscarYCargar(this.closest('tr'))" style="font-size:13px;padding:4px 7px;border-radius:5px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;margin-bottom:4px;display:block;width:100%">🔍</button>
-      <button class="btn-save-cache" title="Guardar precio actual en caché" onclick="guardarFilaEnCache(this.closest('tr'))" style="font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;margin-bottom:4px;display:block;width:100%">💾</button>
+      <button class="btn-save-cache" title="💾 Guardar en caché + Firebase (precio y link aprobados)" onclick="guardarFilaEnCache(this.closest('tr'))" style="font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;margin-bottom:4px;display:block;width:100%">💾</button>
       <button class="btn-del" title="Eliminar fila">×</button>
     </td>
   `;
@@ -2176,7 +2176,7 @@ async function guardarFilaEnCache(tr) {
     const data = await res.json();
     if (data.ok) {
       const btn = tr.querySelector('.btn-save-cache');
-      if (btn) { btn.innerHTML = '✅'; setTimeout(() => btn.innerHTML = '💾', 2000); }
+      if (btn) { btn.innerHTML = '🔥'; btn.title = 'Guardado en caché + Firebase'; setTimeout(() => { btn.innerHTML = '💾'; btn.title = '💾 Guardar en caché + Firebase'; }, 2000); }
     }
   } catch(e) {
     alert('Error al guardar en caché: ' + e.message);
