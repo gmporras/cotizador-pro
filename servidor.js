@@ -932,6 +932,21 @@ ${pdfTexto}`;
     return;
   }
 
+  // GET /test-firebase — verificar conexion con Firebase
+  if (req.method === 'GET' && url === '/test-firebase') {
+    log(C.cyan, '→ /test-firebase');
+    try {
+      await guardarEnLinksCompras('__test__', {
+        link: 'https://test.cl', precio: 1, precioVerificado: 1,
+        tienda: 'test', fuente: 'test', score: 100
+      });
+      sendJSON(res, 200, { ok: true, msg: 'Firebase OK — revisa links_compras en Firestore' });
+    } catch(e) {
+      sendJSON(res, 500, { ok: false, error: e.message });
+    }
+    return;
+  }
+
   // POST /cache-save — guardar resultado manual en caché
   if (req.method === 'POST' && url === '/cache-save') {
     let b;
@@ -1138,9 +1153,13 @@ ${pdfTexto}`;
       }
 
       guardarEnCache(query, candidatos, mejor);
-      // Guardar en Firebase links_compras — base de datos compartida de links reales
-      if (mejor.link && (mejor.precioVerificado || mejor.precio) > 0) {
-        guardarEnLinksCompras(query, mejor).catch(e => log(C.yellow, `  ⚠ links_compras: ${e.message}`));
+      // Guardar en Firebase links_compras
+      const precioFB = mejor.precioVerificado || mejor.precio || 0;
+      if (mejor.link && precioFB > 0) {
+        log(C.cyan, `  → Guardando en Firebase: "${query.substring(0,40)}" $${precioFB}`);
+        guardarEnLinksCompras(query, mejor).catch(e => log(C.red, `  ✗ links_compras error: ${e.message}`));
+      } else {
+        log(C.yellow, `  ⚠ No se guarda en Firebase: link="${mejor.link}" precio=${precioFB}`);
       }
       log(C.green, `✓ "${mejor.titulo?.substring(0,50)}" $${mejor.precioVerificado||mejor.precio}`);
       sendJSON(res, 200, { resultados: candidatos, mejor, razon: eleccion.razon, desdeCache: false });
@@ -1155,7 +1174,7 @@ ${pdfTexto}`;
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log('');
-  console.log(`${C.bold}${C.green}  ✅  Cotizador PRO V9 — Servidor activo${C.reset}`);
+  console.log(`${C.bold}${C.green}  ✅  Cotizador PRO V10 — Servidor activo${C.reset}`);
   console.log(`${C.dim}  Escuchando en${C.reset} ${C.cyan}http://localhost:${PORT}${C.reset}`);
   console.log('');
   console.log(`${C.dim}  1. Abre ${C.yellow}Cotizador_Pro_V9.html${C.reset}${C.dim} en tu navegador`);

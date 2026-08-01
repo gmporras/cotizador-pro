@@ -2406,9 +2406,11 @@ function abrirModalKame() {
   const folioActual = parseInt(localStorage.getItem('kameFolioActual') || '1000', 10);
   document.getElementById('kameFolio').value   = folioActual + 1;
   document.getElementById('kameVendedor').value = localStorage.getItem('kameVendedor') || '';
+  document.getElementById('kameUnidad').value   = localStorage.getItem('kameUnidad') || 'Quilicura';
   document.getElementById('kameRut').value      = '';
   document.getElementById('kameRazon').value    = '';
-  document.getElementById('kameObs').value      = '';
+  document.getElementById('kameObs').value      = document.getElementById('histNombre')?.value || '';
+  document.getElementById('kameGlosa').value    = '';
   document.getElementById('kameModal').style.display = 'flex';
 }
 
@@ -2421,7 +2423,9 @@ function exportarKame() {
   const razon    = document.getElementById('kameRazon').value.trim();
   const folio    = document.getElementById('kameFolio').value.trim();
   const vendedor = document.getElementById('kameVendedor').value.trim();
+  const unidad   = document.getElementById('kameUnidad').value.trim() || 'Casa Matriz';
   const obs      = document.getElementById('kameObs').value.trim();
+  const glosa    = document.getElementById('kameGlosa').value.trim();
 
   if (!rut)   { alert('Ingresa el RUT del cliente.'); return; }
   if (!razon) { alert('Ingresa la Razón Social del cliente.'); return; }
@@ -2473,22 +2477,24 @@ function exportarKame() {
     fechaVenc,                  // Fecha de Vencimiento
     vendedor,                   // Nombre Vendedor
     fechaVenc,                  // Fecha de Vigencia
-    'N',                        // Es inventariable (N = servicio libre, no busca en inventario)
-    '',                         // Nombre Bodega (vacío cuando no es inventariable)
-    'N',                        // En Otra Moneda
-    '', '', '', '', '', '', '', '',  // campos vacíos
-    'Peso',                     // Tipo de Moneda
-    '',                         // Tipo de Cambio a Peso
-    f.desc,                     // Descripción/Artículo
-    'Casa Matriz',              // Nombre Unidad de Negocio
-    f.qty,                      // Cantidad
-    'UN',                       // Unidad de Medida
-    f.vunit,                    // Precio Unitario
-    '', '', '',                 // Descuentos / Recargo
-    '', '', '', '',             // Documento referencia
-    f.desc,                     // Descripción Detallada
-    obs,                        // Observaciones
-    obs,                        // Glosa
+    'N',                                              // Es inventariable
+    '',                                               // Nombre Bodega
+    'N',                                              // En Otra Moneda
+    '', '', '', '', '', '', '', '',                   // campos exportación
+    '',                                               // Tipo de Moneda
+    '',                                               // Tipo de Cambio a Peso
+    (f.desc||'').replace(/;/g,'|'),                   // Descripción/Artículo
+    unidad,                                           // Nombre Unidad de Negocio
+    f.qty,                                            // Cantidad
+    'UN',                                             // Unidad de Medida
+    f.vunit,                                          // Precio Unitario
+    '0',                                              // Descuento Línea
+    '0',                                              // Descuento Total
+    '0',                                              // Recargo Total
+    '', '', '', '',                                   // Documento referencia
+    '',                                               // Descripción Detallada (vacío evita duplicación)
+    (obs||'').replace(/;/g,'|').replace(/\n/g,' '),   // Observaciones
+    (glosa||'').replace(/;/g,'|')                     // Glosa
   ].join(';')).join('\r\n');
 
   const csv = headers + '\r\n' + rows;
@@ -2510,6 +2516,7 @@ function exportarKame() {
   // Guardar folio y vendedor para próxima vez
   localStorage.setItem('kameFolioActual', folio);
   localStorage.setItem('kameVendedor', vendedor);
+  localStorage.setItem('kameUnidad', unidad);
 
   cerrarModalKame();
   alert(`✅ CSV exportado correctamente.\n\nArchivo: Kame_COT_${folio}_${fecha.replace(/-/g,'')}.csv\n\nImpórtalo en Kame: Cotizaciones → Importar`);
@@ -2531,27 +2538,37 @@ loadLocal();
       </div>
     </div>
     <div style="display:grid;gap:10px;margin-bottom:16px;">
-      <div>
-        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">RUT Cliente</div>
-        <input id="kameRut" type="text" placeholder="Ej: 76.123.456-7" style="width:100%;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">RUT Cliente</div>
+          <input id="kameRut" type="text" placeholder="Ej: 76.123.456-7" style="width:100%;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Folio</div>
+          <input id="kameFolio" type="text" placeholder="Ej: 1180" style="width:100%;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;">
+        </div>
       </div>
       <div>
         <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Razón Social Cliente</div>
-        <input id="kameRazon" type="text" placeholder="Ej: Empresa S.A." style="width:100%;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;">
+        <input id="kameRazon" type="text" placeholder="Ej: I. Municipalidad de Coquimbo" style="width:100%;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div>
-          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Folio</div>
-          <input id="kameFolio" type="text" placeholder="Ej: 1001" style="width:100%;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;">
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Vendedor</div>
+          <input id="kameVendedor" type="text" placeholder="Ej: Gustavo Porras" style="width:100%;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;">
         </div>
         <div>
-          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Vendedor</div>
-          <input id="kameVendedor" type="text" placeholder="Ej: gmporras" style="width:100%;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;">
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Unidad de Negocio</div>
+          <input id="kameUnidad" type="text" placeholder="Ej: Quilicura" style="width:100%;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;">
         </div>
       </div>
       <div>
         <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Observaciones</div>
-        <input id="kameObs" type="text" placeholder="Ej: Cotización licitación enero 2025" style="width:100%;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;">
+        <textarea id="kameObs" rows="4" placeholder="Observaciones del documento..." style="width:100%;padding:8px 12px;font-size:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;resize:vertical;font-family:var(--sans)"></textarea>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Glosa</div>
+        <input id="kameGlosa" type="text" placeholder="Ej: Cotización N°1179 - Licitación enero 2026" style="width:100%;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);outline:none;box-sizing:border-box;">
       </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
