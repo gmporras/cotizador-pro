@@ -1138,6 +1138,10 @@ ${pdfTexto}`;
       }
 
       guardarEnCache(query, candidatos, mejor);
+      // Guardar en Firebase links_compras — base de datos compartida de links reales
+      if (mejor.link && (mejor.precioVerificado || mejor.precio) > 0) {
+        guardarEnLinksCompras(query, mejor).catch(e => log(C.yellow, `  ⚠ links_compras: ${e.message}`));
+      }
       log(C.green, `✓ "${mejor.titulo?.substring(0,50)}" $${mejor.precioVerificado||mejor.precio}`);
       sendJSON(res, 200, { resultados: candidatos, mejor, razon: eleccion.razon, desdeCache: false });
 
